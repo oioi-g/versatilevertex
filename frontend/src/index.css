@@ -1,0 +1,17 @@
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+@font-face {
+  font-family: "TanPearl";
+  src: url("fonts/tan-pearl.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  /* margin: 0; */
+  font-family: 'TanPearl', sans-serif;
+  /* -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale; */
+}
