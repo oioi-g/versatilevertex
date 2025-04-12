@@ -17,6 +17,8 @@ const CollageDetailsPage = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [likedCollages, setLikedCollages] = useState([]);
+  const [uploaderUsername, setUploaderUsername] = useState("");
+
   const collageAreaRef = useRef(null);
 
   useEffect(() => {
@@ -27,6 +29,13 @@ const CollageDetailsPage = () => {
         if (collageSnap.exists()) {
           const collageData = collageSnap.data();
           console.log("Fetched collage data:", collageData);
+          if (collageData.postedBy) {
+            const userRef = doc(db, "user", collageData.postedBy);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              setUploaderUsername(userSnap.data().username || "Unknown User");
+            }
+          }
           const validatedCollage = collageData.collage.map((item) => ({
             ...item,
             layout: {
@@ -65,7 +74,7 @@ const CollageDetailsPage = () => {
     };
     fetchCollage();
   }, [collageId]);
-
+  
   useEffect(() => {
     const fetchLikedCollages = async () => {
       const user = getAuth().currentUser;
@@ -311,7 +320,7 @@ const CollageDetailsPage = () => {
   return (
     <Box sx={styles.container}>
       <Typography variant="h4" sx={styles.title}>
-        Collage Details
+        Created by {uploaderUsername}
       </Typography>
 
       {error && (
@@ -337,9 +346,16 @@ const CollageDetailsPage = () => {
                   height: `${item.layout?.height ?? 100}px`,
                   transform: `rotate(${item.layout?.rotation ?? 0}deg)`,
                   zIndex: item.layout?.zIndex ?? 0,
-                  overflow: "hidden" 
+                  overflow: "hidden",
+                  opacity: item.opacity !== undefined ? item.opacity : 1
                 }}>
-                <img src={item.imageUrl} alt={`Collage item ${index}`} crossOrigin="anonymous" style={{ width: `${item.layout.width}px`, height: `${item.layout.height}px`, objectFit: "cover" }} />
+                <img src={item.imageUrl} alt={`Collage item ${index}`} crossOrigin="anonymous" 
+                  style={{ 
+                    width: `${item.layout.width}px`, 
+                    height: `${item.layout.height}px`, 
+                    objectFit: "cover",
+                    transform: item.flipped ? "scaleX(-1)" : "none"
+                  }} />
               </Box>
             ))}
           </Box>

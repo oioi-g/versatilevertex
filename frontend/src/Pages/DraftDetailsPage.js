@@ -32,6 +32,7 @@ const DraftDetailsPage = () => {
   const [showPostCollageModal, setShowPostCollageModal] = useState(false);
   const [collageName, setCollageName] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  
   const collageRef = useRef(null);
 
   useEffect(() => {
@@ -42,24 +43,23 @@ const DraftDetailsPage = () => {
           setError("You need to be logged in to view the draft.");
           return;
         }
-
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         const draftSnap = await getDoc(draftRef);
-
         if (draftSnap.exists()) {
           const draftData = draftSnap.data();
           setDraft(draftData);
           setCollageItems(draftData.collage || []);
           setHistory([{ collageItems: draftData.collage || [] }]);
-        } else {
+        } 
+        else {
           setError("Draft not found.");
         }
-      } catch (error) {
+      } 
+      catch (error) {
         console.error(error);
         setError("Failed to fetch the draft. Please try again later.");
       }
     };
-
     fetchDraft();
   }, [draftId]);
 
@@ -147,7 +147,6 @@ const DraftDetailsPage = () => {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       formData.append("image_file", blob);
-
       const apiResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
         method: "POST",
         headers: {
@@ -191,18 +190,15 @@ const DraftDetailsPage = () => {
         setError("You need to be logged in to save the draft.");
         return;
       }
-
       if (!draftName.trim()) {
         setError("Please enter a name for the draft.");
         return;
       }
-
       const draftData = {
         name: draftName,
         collage: collageItems,
         updatedAt: new Date(),
       };
-
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await updateDoc(draftRef, draftData);
@@ -231,23 +227,18 @@ const DraftDetailsPage = () => {
         setError("You need to be logged in to post the collage.");
         return;
       }
-  
       if (!collageName.trim()) {
         setShowPostCollageModal(true);
         return;
       }
-  
       const userDocRef = doc(db, "user", user.uid);
       const userDocSnap = await getDoc(userDocRef);
-  
       if (!userDocSnap.exists()) {
         setError("User data not found.");
         return;
       }
-  
       const userData = userDocSnap.data();
-      const username = userData.username || "Anonymous";
-  
+      const username = userData.username;
       const formattedCollageItems = collageItems.map((item) => ({
         imageUrl: item.imageUrl,
         layout: {
@@ -258,9 +249,10 @@ const DraftDetailsPage = () => {
           rotation: item.rotation || 0,
           zIndex: item.zIndex || 0,
         },
-        opacity: item.opacity || 1,
+        opacity: item.opacity !== undefined ? item.opacity : 1,
+        flipped: item.flipped || false,
+        hasTransparency: item.hasTransparency || false
       }));
-  
       const publicCollageRef = collection(db, "publicCollages");
       await addDoc(publicCollageRef, {
         name: collageName,
@@ -272,7 +264,6 @@ const DraftDetailsPage = () => {
         likes: 0,
         comments: [],
       });
-  
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await deleteDoc(draftRef);
@@ -289,7 +280,7 @@ const DraftDetailsPage = () => {
       setSnackbarOpen(true);
     }
   };
-
+  
   const handleDeleteDraft = async () => {
     try {
       const user = auth.currentUser ;
@@ -297,14 +288,14 @@ const DraftDetailsPage = () => {
         setError("You need to be logged in to delete the draft.");
         return;
       }
-
       const draftRef = doc(db, "user", user.uid, "drafts", draftId);
       await deleteDoc(draftRef);
       setSnackbarMessage("Draft deleted successfully!");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
       setShowDeleteModal(false);
-    } catch (error) {
+    } 
+    catch (error) {
       console.error(error);
       setSnackbarMessage("Failed to delete the draft. Please try again later.");
       setSnackbarSeverity("error");
@@ -328,11 +319,7 @@ const DraftDetailsPage = () => {
 
           <Box ref={collageRef} sx={styles.collageArea} >
             {collageItems.map((item, index) => (
-              <Draggable
-                key={`${index}-${item.imageUrl}`}
-                position={{ x: item.x || 0, y: item.y || 0 }}
-                onStop={(e, data) => handleDragStop(index, e, data)}
-                cancel=".react-resizable-handle"
+              <Draggable key={`${index}-${item.imageUrl}`} position={{ x: item.x || 0, y: item.y || 0 }} onStop={(e, data) => handleDragStop(index, e, data)} cancel=".react-resizable-handle"
                 sx={{ 
                   position: "absolute", 
                   left: `${item.x || 0}px`, 
@@ -358,21 +345,27 @@ const DraftDetailsPage = () => {
             <Button variant="contained" onClick={undo}>
               Undo
             </Button>
+            
             <Button variant="contained" onClick={redo}>
               Redo
             </Button>
+
             {selectedItem !== null && (
               <>
                 <Button variant="contained" onClick={() => flipImage(selectedItem)}>
                   Flip
                 </Button>
+
                 <Button variant="contained" onClick={() => rotateImage(selectedItem)}>
                   Rotate
                 </Button>
+
                 <Slider value={collageItems[selectedItem]?.opacity || 1} onChange={(e, value) => changeOpacity(selectedItem, value)} min={0} max={1} step={0.1} sx={{ width: 100 }} />
+                
                 <Button variant="contained" onClick={() => removeBackground(selectedItem)}>
                   Remove Background
                 </Button>
+
                 <Button variant="contained" color="error" onClick={() => removeImage(selectedItem)}>
                   Remove
                 </Button>
@@ -384,9 +377,11 @@ const DraftDetailsPage = () => {
             <Button variant="contained" onClick={() => setShowDraftNameModal(true)}>
               Save Draft
             </Button>
+
             <Button variant="contained" color="secondary" onClick={handlePostCollage}>
               Post Collage
             </Button>
+
             <Button variant="contained" color="error" onClick={() => setShowDeleteModal(true)}>
               Delete Draft
             </Button>
@@ -402,9 +397,11 @@ const DraftDetailsPage = () => {
 
       <Dialog open={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
         <DialogTitle>Confirm Deletion</DialogTitle>
+
         <DialogContent>
           <Typography>Are you sure you want to delete this draft? This action cannot be undone.</Typography>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setShowDeleteModal(false)}>Cancel</Button>
           <Button onClick={handleDeleteDraft} color="error">Delete</Button>
@@ -416,13 +413,16 @@ const DraftDetailsPage = () => {
           <Typography variant="h6" style={{ fontWeight: "bold", color: "#494949" }}>
             Name Your Draft
           </Typography>
+
           <IconButton style={{ position: "absolute", right: "10px", top: "10px" }} onClick={() => setShowDraftNameModal(false)} >
             <Close />
           </IconButton>
         </DialogTitle>
+
         <DialogContent>
           <TextField fullWidth value={draftName} placeholder="Enter Draft Name" onChange={(e) => setDraftName(e.target.value)} />
         </DialogContent>
+
         <DialogActions style={{ justifyContent: "center", padding: "20px" }}>
           <Button variant="contained" onClick={handleSaveDraft} style={{ backgroundColor: "#214224", color: "#fff", borderRadius: "5px", padding: "10px 20px" }} >
             Save Draft
@@ -437,9 +437,11 @@ const DraftDetailsPage = () => {
             <Close />
           </IconButton>
         </DialogTitle>
+
         <DialogContent>
           <TextField type="text" fullWidth value={collageName} placeholder="Enter Collage Name" onChange={(e) => setCollageName(e.target.value)} />
         </DialogContent>
+
         <DialogActions>
           <Button onClick={handlePostCollage}>Done</Button>
         </DialogActions>

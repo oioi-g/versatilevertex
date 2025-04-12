@@ -294,9 +294,25 @@ const UserProfilePage = () => {
           </Button>
         )}
 
-        <Button variant="contained" sx={{ backgroundColor: "#ff5757", color: "#f0f0f0", fontFamily: "'TanPearl', sans-serif", width: "80%", display: "flex", justifyContent: "center", alignItems: "center" }} onClick={handleDeleteAccount} >
-          Delete Account
-        </Button>
+        {isAdmin && (
+          <Button variant="contained" sx={{ backgroundColor: "transparent", color: "#214224", fontFamily: "'TanPearl', sans-serif", width: "80%", display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => navigate("/admin/viewfeedbackspage")} >
+            View Feedbacks
+            <AdminPanelSettings />
+          </Button>
+        )}
+
+        {!isAdmin && (
+          <Button variant="contained" sx={{ backgroundColor: "transparent", color: "#214224", fontFamily: "'TanPearl', sans-serif", width: "80%", display: "flex", justifyContent: "space-between", alignItems: "center" }} onClick={() => navigate("/feedbackpage")} >
+            Give Feedback
+            <ArrowForward />
+          </Button>
+        )}
+
+        {!isAdmin && (
+          <Button variant="contained" sx={{ backgroundColor: "#ff5757", color: "#f0f0f0", fontFamily: "'TanPearl', sans-serif", width: "80%", display: "flex", justifyContent: "center", alignItems: "center" }} onClick={handleDeleteAccount} >
+            Delete Account
+          </Button>
+        )}
       </Box>
 
       <Modal open={showFollowersModal} onClose={() => setShowFollowersModal(false)}>
@@ -311,7 +327,7 @@ const UserProfilePage = () => {
             ) : (
               followers.map((follower) => (
                 <ListItem key={follower.id}>
-                  <Link to={`/user/${follower.id}`} style={{ textDecoration: "none", color: "#f0f0f0" }}>
+                  <Link to={`/user/${follower.id}`} style={{ textDecoration: "underline", color: "#f0f0f0" }}>
                     <ListItemText primary={follower.username} />
                   </Link>
                 </ListItem>
@@ -333,7 +349,7 @@ const UserProfilePage = () => {
             ) : (
               following.map((followingUser) => (
                 <ListItem key={followingUser.id}>
-                  <Link to={`/user/${followingUser.id}`} style={{ textDecoration: "none", color: "#f0f0f0" }}>
+                  <Link to={`/user/${followingUser.id}`} style={{ textDecoration: "underline", color: "#f0f0f0" }}>
                     <ListItemText primary={followingUser.username} />
                   </Link>
                 </ListItem>

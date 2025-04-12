@@ -18,7 +18,7 @@ const ImageCard = ({ image, onClose, onLike, onBookmark, isLiked, likesCount, on
           <img src={image.imageUrl} alt={image.description} style={{ maxWidth: '400px', maxHeight: '400px', width: 'auto', height: 'auto', borderRadius: '8px', marginBottom: '16px', display: 'block', marginRight: 'auto', marginLeft: 'auto', fontFamily: "'TanPearl', sans-serif", fontWeight: 'bold' }} />
 
           <Typography variant="body1" sx={{ color: '#f0f0f0', marginBottom: '16px', fontFamily: "'TanPearl', sans-serif" }}>
-            {image.description}
+            {image.description.toLowerCase()}
           </Typography>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

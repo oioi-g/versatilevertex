@@ -249,10 +249,6 @@ const UserDesignChallengesPage = () => {
   return (
     <Box sx={{ padding: 3, backgroundColor: "#f0f0f0", minHeight: "100vh" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
-        <Typography variant="h4" sx={{ fontFamily: "'TanPearl', serif", color: "#214224" }}>
-          Design Challenges
-        </Typography>
-        
         {isAdmin && (
           <Button variant="contained" onClick={() => navigate("/admin/createchallengepage")} sx={{ backgroundColor: "#214224", color: "#f0f0f0", '&:hover': { backgroundColor: "#1a331a" }, borderRadius: 2, textTransform: "none", fontWeight: "bold" }} startIcon={<Add />}>
             New Challenge

@@ -20,6 +20,8 @@ import AdminViewSubmissionsPage from "./Pages/AdminViewSubmissionsPage";
 import CreateChallengePage from "./Pages/CreateChallengePage";
 import AdminViewReportsPage from "./Pages/AdminViewReportsPage";
 import ForgotPasswordPage from "./Pages/ForgotPasswordPage";
+import FeedbackPage from "./Pages/FeedbackPage";
+import AdminViewFeedbacksPage from "./Pages/AdminViewFeedbacksPage";
 import Footer from "./Components/Footer";
 import Header from "./Components/Header";
 import { Box, ThemeProvider, createTheme, CssBaseline } from "@mui/material";
@@ -85,6 +87,8 @@ const MainLayout = () => {
           <Route path="/admin/createchallengepage" element={<CreateChallengePage />} />
           <Route path="/admin/viewreportspage" element={<AdminViewReportsPage />} />
           <Route path="/forgotpasswordpage" element={<ForgotPasswordPage />} />
+          <Route path="/feedbackpage" element={<FeedbackPage />} />
+          <Route path="/admin/viewfeedbackspage" element={<AdminViewFeedbacksPage />} />
         </Routes>
       </main>
       {!hideFooter && <Footer />}

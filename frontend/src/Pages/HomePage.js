@@ -61,10 +61,11 @@ const HomePage = () => {
       let imagesCollection = collection(db, "unsplashImages");
       let snapshot;
       if (searchQuery) {
+        const lowercaseQuery = searchQuery.toLowerCase();
         const q = query(
           imagesCollection,
-          where("description", ">=", searchQuery),
-          where("description", "<=", searchQuery + "\uf8ff")
+          where("description", ">=", lowercaseQuery),
+          where("description", "<=", lowercaseQuery + "\uf8ff")
         );
         snapshot = await getDocs(q);
       } 
@@ -500,12 +501,14 @@ const HomePage = () => {
           </Button>
         </Box>
 
-        <Box sx={{ textAlign: 'center', marginBottom: '10px', marginTop: '20px' }}>
-          <TextField type="text" placeholder="Search images" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} sx={{ width: '300px', '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#214224' }, '&:hover fieldset': { borderColor: '#214224' }}}} variant="outlined" />
-          <Button variant="contained" onClick={() => fetchImages(searchQuery)} sx={{ marginLeft: '10px', backgroundColor: '#214224', color: '#f0f0f0', borderRadius: '4px', fontFamily: 'TanPearl, sans-serif', textTransform: 'none', padding: '8px 16px', '&:hover': { backgroundColor: '#f0f0f0', color: '#214224', border: '1px solid #214224' }}}>
-            Search
-          </Button>
-        </Box>
+        {activeTab === "images" && (
+          <Box sx={{ textAlign: 'center', marginBottom: '10px', marginTop: '20px' }}>
+            <TextField type="text" placeholder="Search images" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} sx={{ width: '300px', '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#214224' }, '&:hover fieldset': { borderColor: '#214224' }}}} variant="outlined" />
+            <Button variant="contained" onClick={() => fetchImages(searchQuery)} sx={{ marginLeft: '10px', backgroundColor: '#214224', color: '#f0f0f0', borderRadius: '4px', fontFamily: 'TanPearl, sans-serif', textTransform: 'none', padding: '8px 16px', '&:hover': { backgroundColor: '#f0f0f0', color: '#214224', border: '1px solid #214224' }}}>
+              Search
+            </Button>
+          </Box>
+        )}
 
         {activeTab === "images" && (
           <Grid container spacing={2} sx={styles.imageGallery}>

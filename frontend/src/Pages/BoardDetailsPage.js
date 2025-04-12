@@ -54,6 +54,7 @@ const BoardDetailsPage = () => {
   const [showPostCollageModal, setShowPostCollageModal] = useState(false);
   const [collageName, setCollageName] = useState("");
   const [collageNameError, setCollageNameError] = useState("");
+  
   const collageRef = useRef(null);
 
   useEffect(() => {
@@ -110,11 +111,22 @@ const BoardDetailsPage = () => {
   }, [selectedItem]);
 
   const saveToHistory = (newState) => {
-    setCollageItems(newState.collageItems);
-    setHistory((prev) => [...prev, { collageItems: newState.collageItems }]);
+    const updatedCollage = newState.collageItems.map(item => ({
+      ...item,
+      x: item.x || 0,
+      y: item.y || 0,
+      width: item.width || 100,
+      height: item.height || 100,
+      rotation: item.rotation || 0,
+      opacity: item.opacity !== undefined ? item.opacity : 1,
+      flipped: item.flipped || false,
+      hasTransparency: item.hasTransparency || false
+    }));  
+    setCollageItems(updatedCollage);
+    setHistory((prev) => [...prev, { collageItems: updatedCollage }]);
     setRedoStack([]);
   };
-
+  
   const handleDragStop = (index, e, data) => {
     const updatedCollage = [...collageItems];
     updatedCollage[index] = { ...updatedCollage[index], x: data.x, y: data.y };
@@ -146,7 +158,7 @@ const BoardDetailsPage = () => {
         name: draftName,
         collage: collageItems.map((item) => ({
           ...item,
-          opacity: item.opacity || 1,
+          opacity: item.opacity !== undefined ? item.opacity : 1,
         })),
         updatedAt: new Date(),
       };
@@ -190,7 +202,7 @@ const BoardDetailsPage = () => {
         return;
       }
       const userData = userDocSnap.data();
-      const username = userData.username || "Anonymous";
+      const username = userData.username;
       const formattedCollageItems = collageItems.map((item) => ({
         imageUrl: item.imageUrl,
         layout: {
@@ -201,7 +213,9 @@ const BoardDetailsPage = () => {
           rotation: item.rotation || 0,
           zIndex: item.zIndex || 0,
         },
-        opacity: item.opacity || 1,
+        opacity: item.opacity !== undefined ? item.opacity : 1,
+        flipped: item.flipped || false,
+        hasTransparency: item.hasTransparency || false
       }));
       if (!collageName.trim()) {
         setShowPostCollageModal(true);
@@ -232,7 +246,7 @@ const BoardDetailsPage = () => {
       setError("Failed to post the collage. Please try again later.");
     }
   };
-
+  
   const addImageToCollage = (pin) => {
     const newCollageItems = [
       ...collageItems,
@@ -289,8 +303,10 @@ const BoardDetailsPage = () => {
   };
 
   const changeOpacity = (index, value) => {
-    const updatedCollage = [...collageItems];
-    updatedCollage[index].opacity = value;
+    const updatedCollage = collageItems.map((item, i) => 
+      i === index ? { ...item, opacity: value } : item
+    );
+    console.log("Updated collage items:", updatedCollage);
     saveToHistory({ collageItems: updatedCollage });
   };
 
@@ -306,16 +322,16 @@ const BoardDetailsPage = () => {
       if (!selectedImage?.imageUrl) {
         throw new Error("No image URL found");
       }
+      setSnackbarMessage("Removing background...");
+      setSnackbarSeverity("info");
+      setSnackbarOpen(true);
       const response = await fetch(selectedImage.imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
       const blob = await response.blob();
-      if (!blob) {
-        throw new Error("Failed to convert image to blob");
-      }
+      if (!blob) throw new Error("Failed to convert image to blob");
       const formData = new FormData();
       formData.append("image_file", blob);
+      formData.append("size", "auto");
       const apiResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
         method: "POST",
         headers: {
@@ -325,17 +341,16 @@ const BoardDetailsPage = () => {
       });
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
-        throw new Error(
-          `API Error: ${apiResponse.status} - ${errorData?.errors?.[0]?.title || 'Unknown error'}`
-        );
+        throw new Error(`API Error: ${errorData?.errors?.[0]?.title || 'Unknown error'}`);
       }
       const resultBlob = await apiResponse.blob();
       const storageRef = ref(storage, `processed-images/${Date.now()}.png`);
       await uploadBytes(storageRef, resultBlob);
       const downloadUrl = await getDownloadURL(storageRef);
-      const updatedCollage = [...collageItems];
-      updatedCollage[index].imageUrl = downloadUrl;
-      saveToHistory({ collageItems: updatedCollage });
+      const updatedCollage = collageItems.map((item, i) => 
+        i === index ? { ...item, imageUrl: downloadUrl, hasTransparency: true } : item
+      );
+      setCollageItems(updatedCollage);
       const user = auth.currentUser;
       if (user && draftId) {
         await updateDoc(doc(db, "user", user.uid, "drafts", draftId), {
@@ -347,9 +362,7 @@ const BoardDetailsPage = () => {
     } 
     catch (error) {
       console.error(error);
-      setSnackbarMessage(
-        error.message || "Failed to remove the background. Please try again later."
-      );
+      setSnackbarMessage(error.message || "Failed to remove background");
       setSnackbarSeverity("error");
     } 
     finally {
@@ -408,26 +421,26 @@ const BoardDetailsPage = () => {
           <Typography variant="h4" align="center" gutterBottom sx={{ color: "#214224" }}>
             {board.name}
           </Typography>
+
           <Typography variant="body1" align="center" gutterBottom sx={{ color: "#214224" }}>
             {board.description}
           </Typography>
 
           <Box ref={collageRef} sx={styles.collageArea} >
             {collageItems.map((item, index) => (
-              <Draggable
-                key={`${index}-${item.imageUrl}`}
-                position={{ x: item.x || 0, y: item.y || 0 }}
-                onStop={(e, data) => handleDragStop(index, e, data)}
-                cancel=".react-resizable-handle"
-                sx={{ position: "absolute", left: `${item.x || 0}px`, top: `${item.y || 0}px`, width: `${item.width || 100}px`, height: `${item.height || 100}px`, transform: `rotate(${item.rotation || 0}deg)`, zIndex: selectedItem === index ? 1000 : 1, overflow: "hidden" }} >
+              <Draggable key={`${index}-${item.imageUrl}`} position={{ x: item.x || 0, y: item.y || 0 }} onStop={(e, data) => handleDragStop(index, e, data)} cancel=".react-resizable-handle">
                 <div className="pinContainer">
-                  <ResizableBox width={item.width || 100} height={item.height || 100} minConstraints={[50, 50]} maxConstraints={[300, 300]} onResizeStop={(e, data) => handleResizeStop(index, e, data)} >
-                    <img src={item.imageUrl} alt={item.title} onClick={() => {
-                        console.log("Image clicked, selected item:", index);
-                        setSelectedItem(index);
-                      }} 
-                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "5px", transform: `${item.flipped ? "scaleX(-1)" : ""}`, opacity: item.opacity || 1 }} 
-                    />
+                  <ResizableBox width={item.width || 100} height={item.height || 100} minConstraints={[50, 50]} maxConstraints={[300, 300]} onResizeStop={(e, data) => handleResizeStop(index, e, data)}>
+                    <img src={item.imageUrl} alt={item.title}  onClick={() => setSelectedItem(index)}
+                      style={{ 
+                        width: "100%", 
+                        height: "100%", 
+                        objectFit: "cover", 
+                        borderRadius: "5px",
+                        transform: `${item.flipped ? "scaleX(-1)" : ""} rotate(${item.rotation || 0}deg)`,
+                        opacity: item.opacity !== undefined ? item.opacity : 1,
+                        backgroundColor: item.hasTransparency ? "transparent" : undefined
+                      }} />
                   </ResizableBox>
                 </div>
               </Draggable>
@@ -438,21 +451,27 @@ const BoardDetailsPage = () => {
             <Button variant="contained" onClick={undo}>
               Undo
             </Button>
+
             <Button variant="contained" onClick={redo}>
               Redo
             </Button>
+
             {selectedItem !== null && (
               <>
                 <Button variant="contained" onClick={() => flipImage(selectedItem)}>
                   Flip
                 </Button>
+
                 <Button variant="contained" onClick={() => rotateImage(selectedItem)}>
                   Rotate
                 </Button>
+
                 <Slider value={collageItems[selectedItem]?.opacity || 1} onChange={(e, value) => changeOpacity(selectedItem, value)} min={0} max={1} step={0.1} sx={{ width: 100 }} />
+                
                 <Button variant="contained" onClick={() => removeBackground(selectedItem)}>
                   Remove Background
                 </Button>
+
                 <Button variant="contained" color="error" onClick={() => removeImage(selectedItem)}>
                   Remove
                 </Button>
@@ -464,9 +483,11 @@ const BoardDetailsPage = () => {
             <Button variant="contained" onClick={() => setShowDraftNameModal(true)}>
               Save as Draft
             </Button>
+
             <Button variant="contained" color="secondary" onClick={handlePostCollageClick}>
               Post Collage
             </Button>
+
             <Button variant="contained" color="error" onClick={() => setShowDeleteModal(true)} >
               Delete Board
             </Button>
@@ -480,6 +501,7 @@ const BoardDetailsPage = () => {
               <Grid item key={index} xs={12} sm={6} md={4} lg={3}>
                 <StyledImageContainer>
                   <img src={pin.imageUrl} alt={pin.title} style={{ width: "100%", height: "300px", objectFit: "cover", borderRadius: "5px" }} onClick={() => addImageToCollage(pin)} />
+                  
                   <StyledDeleteOverlay>
                     <IconButton onClick={() => deleteImageFromMoodboard(index)}>
                       <FontAwesomeIcon icon={faTrash} style={{ color: "#F5EDE6" }} />
@@ -496,15 +518,18 @@ const BoardDetailsPage = () => {
         <DialogTitle sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
           Are you sure?
         </DialogTitle>
+
         <DialogContent>
           <DialogContentText sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
             This action cannot be undone. The board will be permanently deleted.
           </DialogContentText>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setShowDeleteModal(false)} sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
             Cancel
           </Button>
+
           <Button onClick={handleDeleteBoard} sx={{ fontFamily: "'TanPearl', sans-serif", backgroundColor: "#ff5757", color: "#f0f0f0" }}>
             Delete
           </Button>
@@ -522,13 +547,16 @@ const BoardDetailsPage = () => {
           <Typography variant="h6" style={{ fontWeight: "bold", color: "#f0f0f0" }}>
             Name Your Draft
           </Typography>
+
           <IconButton style={{ position: "absolute", right: "10px", top: "10px", color: "#f0f0f0" }} onClick={() => setShowDraftNameModal(false)} >
             <FontAwesomeIcon icon={faTimes} />
           </IconButton>
         </DialogTitle>
+
         <DialogContent>
           <TextField fullWidth variant="outlined" value={draftName} onChange={(e) => setDraftName(e.target.value)} placeholder="Enter draft name" style={{ marginTop: "10px" }} sx={{ input: { color: "#f0f0f0" }, border: "#f0f0f0", '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#f0f0f0' }, '&:hover fieldset': { borderColor: '#f0f0f0' }}}} />
         </DialogContent>
+
         <DialogActions style={{ justifyContent: "center", padding: "20px" }}>
           <Button variant="contained" onClick={handleSaveAsDraft} style={{ backgroundColor: "#f0f0f0", color: "#214224", borderRadius: "5px", padding: "10px 20px" }} >
             Save Draft
@@ -542,16 +570,19 @@ const BoardDetailsPage = () => {
             Draft Saved Successfully!
           </Typography>
         </DialogTitle>
+
         <DialogContent>
           <Typography variant="body1" style={{ marginBottom: "20px" }}>
             Your draft has been saved.
           </Typography>
+
           <Link to="/viewdraftspage" style={{ textDecoration: "none" }}>
             <Button variant="contained" style={{ backgroundColor: "#214224", color: "#fff", borderRadius: "5px", padding: "10px 20px", marginBottom: "10px" }} >
               View Drafts
             </Button>
           </Link>
         </DialogContent>
+
         <DialogActions style={{ justifyContent: "center", padding: "20px" }}>
           <Button variant="outlined" onClick={() => setShowConfirmation(false)} style={{ borderColor: "#214224", color: "#214224", borderRadius: "5px", padding: "10px 20px" }} >
             Close
@@ -561,13 +592,16 @@ const BoardDetailsPage = () => {
 
       <Dialog open={showPostCollageModal} onClose={() => setShowPostCollageModal(false)} PaperProps={{ style: { borderRadius: "10px", padding: "20px", width: "400px", textAlign: "center", backgroundColor: "#214224" }}}>
         <DialogTitle sx={{ color: "#f0f0f0" }}>Name Your Collage</DialogTitle>
+
         <DialogContent>
           <TextField fullWidth variant="outlined" value={collageName} onChange={(e) => setCollageName(e.target.value)} error={!!collageNameError} helperText={collageNameError} placeholder="Enter Collage Name" sx={{ input: { color: "#f0f0f0" }, border: "#f0f0f0", '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#f0f0f0' }, '&:hover fieldset': { borderColor: '#f0f0f0' }}}} />
         </DialogContent>
+
         <DialogActions>
           <IconButton style={{ position: "absolute", right: "10px", top: "10px", color: "#f0f0f0" }} onClick={() => setShowPostCollageModal(false)} >
             <FontAwesomeIcon icon={faTimes} />
           </IconButton>
+
           <Button onClick={handleDoneModal} sx={{ backgroundColor: "#f0f0f0", color: "#214224" }}>
             Done
           </Button>

@@ -52,6 +52,28 @@ const UserDashboardPage = () => {
     fetchCollages();
   }, []);
 
+  // Function to generate a color palette
+  const generateColorPalette = (count) => {
+    const baseColors = [
+      "rgba(255, 99, 132, 0.7)",
+      "rgba(54, 162, 235, 0.7)",
+      "rgba(75, 192, 192, 0.7)",
+      "rgba(255, 159, 64, 0.7)",
+      "rgba(153, 102, 255, 0.7)",
+      "rgba(255, 205, 86, 0.7)",
+      "rgba(201, 203, 207, 0.7)",
+      "rgba(54, 162, 235, 0.7)",
+      "rgba(255, 99, 132, 0.7)",
+      "rgba(75, 192, 192, 0.7)"
+    ];
+    
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      colors.push(baseColors[i % baseColors.length]);
+    }
+    return colors;
+  };
+
   const handleCollageClick = (collageId) => {
     navigate(`/collagedetailspage/${collageId}`);
   };
@@ -153,33 +175,66 @@ const UserDashboardPage = () => {
     },
   };
 
+  // const barChartData = {
+  //   labels: collageLabels,
+  //   datasets: [
+  //     {
+  //       label: "Views",
+  //       data: viewsData,
+  //       backgroundColor: generateColorPalette(collages.length),
+  //       borderColor: generateColorPalette(collages.length).map(color => 
+  //         color.replace('0.7', '1')
+  //       ),
+  //       borderWidth: 1,
+  //     },
+  //     {
+  //       label: "Likes",
+  //       data: likesData,
+  //       backgroundColor: generateColorPalette(collages.length),
+  //       borderColor: generateColorPalette(collages.length).map(color => 
+  //         color.replace('0.7', '1')
+  //       ),
+  //       borderWidth: 1,
+  //     },
+  //     {
+  //       label: "Shares",
+  //       data: sharesData,
+  //       backgroundColor: generateColorPalette(collages.length),
+  //       borderColor: generateColorPalette(collages.length).map(color => 
+  //         color.replace('0.7', '1')
+  //       ),
+  //       borderWidth: 1,
+  //     },
+  //   ],
+  // };
+
   const barChartData = {
     labels: collageLabels,
     datasets: [
       {
         label: "Views",
         data: viewsData,
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        borderColor: "rgb(255, 99, 132)",
+        backgroundColor: "rgba(255, 99, 132, 0.7)",
+        borderColor: "rgba(255, 99, 132, 1)",
         borderWidth: 1,
       },
       {
         label: "Likes",
         data: likesData,
-        backgroundColor: "rgba(54, 162, 235, 0.2)",
-        borderColor: "rgb(54, 162, 235)",
+        backgroundColor: "rgba(54, 162, 235, 0.7)",
+        borderColor: "rgba(54, 162, 235, 1)",
         borderWidth: 1,
       },
       {
         label: "Shares",
         data: sharesData,
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
-        borderColor: "rgb(75, 192, 192)",
+        backgroundColor: "rgba(75, 192, 192, 0.7)",
+        borderColor: "rgba(75, 192, 192, 1)",
         borderWidth: 1,
       },
     ],
   };
-
+  
   const pieChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -208,16 +263,10 @@ const UserDashboardPage = () => {
       {
         label: "Engagement",
         data: viewsData.map((view, index) => view + likesData[index] + sharesData[index]),
-        backgroundColor: [
-          "rgba(255, 99, 132, 0.2)",
-          "rgba(54, 162, 235, 0.2)",
-          "rgba(75, 192, 192, 0.2)",
-        ],
-        borderColor: [
-          "rgb(255, 99, 132)",
-          "rgb(54, 162, 235)",
-          "rgb(75, 192, 192)",
-        ],
+        backgroundColor: generateColorPalette(collages.length),
+        borderColor: generateColorPalette(collages.length).map(color => 
+          color.replace('0.7', '1')
+        ),
         borderWidth: 1,
       },
     ],
