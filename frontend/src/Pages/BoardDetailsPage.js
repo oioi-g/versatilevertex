@@ -9,14 +9,8 @@ import { Link } from "react-router-dom";
 import Draggable from "react-draggable";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
-import { Container, Typography, Button, Grid, Paper, TextField, IconButton, Box, Slider, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Alert } from "@mui/material";
+import { Typography, Button, Grid, Paper, TextField, IconButton, Box, Slider, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar, Alert } from "@mui/material";
 import { styled } from "@mui/system";
-
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(2),
-  marginBottom: theme.spacing(2),
-  backgroundColor: theme.palette.background.paper,
-}));
 
 const StyledImageContainer = styled(Box)(({ theme }) => ({
   position: "relative",
@@ -54,7 +48,7 @@ const BoardDetailsPage = () => {
   const [showPostCollageModal, setShowPostCollageModal] = useState(false);
   const [collageName, setCollageName] = useState("");
   const [collageNameError, setCollageNameError] = useState("");
-  
+  const [collages, setCollages] = useState([]);
   const collageRef = useRef(null);
 
   useEffect(() => {
@@ -99,6 +93,42 @@ const BoardDetailsPage = () => {
   }, [boardId]);
 
   useEffect(() => {
+    const fetchCollages = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return;
+        if (board?.collages && Array.isArray(board.collages) && board.collages.length > 0) {
+          const collagePromises = board.collages.map(async (collage) => {
+            if (typeof collage === 'object' && collage !== null) {
+              return collage;
+            }
+            else if (typeof collage === 'string') {
+              const collageRef = doc(db, "publicCollages", collage);
+              const collageSnap = await getDoc(collageRef);
+              if (collageSnap.exists()) {
+                return { id: collageSnap.id, ...collageSnap.data() };
+              }
+            }
+            return null;
+          });
+          const fetchedCollages = (await Promise.all(collagePromises)).filter(Boolean);
+          setCollages(fetchedCollages);
+        } 
+        else {
+          setCollages([]);
+        }
+      } 
+      catch (error) {
+        console.error(error);
+        setCollages([]);
+      }
+    };
+    if (board) {
+      fetchCollages();
+    }
+  }, [board]);
+  
+  useEffect(() => {
     const handleClickOutside = (e) => {
       if (selectedItem !== null && !e.target.closest(".pinContainer")) {
         setSelectedItem(null);
@@ -111,22 +141,11 @@ const BoardDetailsPage = () => {
   }, [selectedItem]);
 
   const saveToHistory = (newState) => {
-    const updatedCollage = newState.collageItems.map(item => ({
-      ...item,
-      x: item.x || 0,
-      y: item.y || 0,
-      width: item.width || 100,
-      height: item.height || 100,
-      rotation: item.rotation || 0,
-      opacity: item.opacity !== undefined ? item.opacity : 1,
-      flipped: item.flipped || false,
-      hasTransparency: item.hasTransparency || false
-    }));  
-    setCollageItems(updatedCollage);
-    setHistory((prev) => [...prev, { collageItems: updatedCollage }]);
+    setCollageItems(newState.collageItems);
+    setHistory((prev) => [...prev, { collageItems: newState.collageItems }]);
     setRedoStack([]);
   };
-  
+
   const handleDragStop = (index, e, data) => {
     const updatedCollage = [...collageItems];
     updatedCollage[index] = { ...updatedCollage[index], x: data.x, y: data.y };
@@ -158,7 +177,7 @@ const BoardDetailsPage = () => {
         name: draftName,
         collage: collageItems.map((item) => ({
           ...item,
-          opacity: item.opacity !== undefined ? item.opacity : 1,
+          opacity: item.opacity || 1,
         })),
         updatedAt: new Date(),
       };
@@ -188,6 +207,46 @@ const BoardDetailsPage = () => {
     }
   };
 
+  const addCollageToBoard = (collage) => {
+    const newCollageItems = [
+      ...collageItems,
+      ...collage.collage.map(item => ({
+        ...item,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+      }))
+    ];
+    saveToHistory({ collageItems: newCollageItems });
+  };
+  
+  const deleteCollageFromMoodboard = async (index) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const updatedCollages = [...board.collages];
+      updatedCollages.splice(index, 1);
+      const boardRef = doc(db, "user", user.uid, "boards", boardId);
+      await updateDoc(boardRef, {
+        collages: updatedCollages
+      });      
+      setBoard(prev => ({ ...prev, collages: updatedCollages }));
+      setCollages(prev => prev.filter((_, i) => i !== index));
+      const collageToRemove = collages[index];
+      const updatedCollageItems = collageItems.filter(item => 
+        !collageToRemove.collage.some(collageItem => collageItem.imageUrl === item.imageUrl)
+      );
+      setCollageItems(updatedCollageItems);
+    } 
+    catch (error) {
+      console.error("Error deleting collage:", error);
+      setSnackbarMessage("Failed to delete collage");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    }
+  };
+
   const handlePostCollage = async () => {
     try {
       const user = auth.currentUser;
@@ -202,9 +261,17 @@ const BoardDetailsPage = () => {
         return;
       }
       const userData = userDocSnap.data();
-      const username = userData.username;
+      const username = userData.username || "Anonymous";
       const formattedCollageItems = collageItems.map((item) => ({
         imageUrl: item.imageUrl,
+        x: item.x || 0,
+        y: item.y || 0,
+        width: item.width || 100,
+        height: item.height || 100,
+        rotation: item.rotation || 0,
+        zIndex: item.zIndex || 0,
+        opacity: item.opacity || 1,
+        flipped: item.flipped || false,
         layout: {
           x: item.x || 0,
           y: item.y || 0,
@@ -213,9 +280,6 @@ const BoardDetailsPage = () => {
           rotation: item.rotation || 0,
           zIndex: item.zIndex || 0,
         },
-        opacity: item.opacity !== undefined ? item.opacity : 1,
-        flipped: item.flipped || false,
-        hasTransparency: item.hasTransparency || false
       }));
       if (!collageName.trim()) {
         setShowPostCollageModal(true);
@@ -225,6 +289,8 @@ const BoardDetailsPage = () => {
       await addDoc(publicCollageRef, {
         name: collageName,
         collage: formattedCollageItems,
+        containerWidth: 1000,
+        containerHeight: 800,
         createdAt: new Date(),
         updatedAt: new Date(),
         postedBy: user.uid,
@@ -246,7 +312,7 @@ const BoardDetailsPage = () => {
       setError("Failed to post the collage. Please try again later.");
     }
   };
-  
+
   const addImageToCollage = (pin) => {
     const newCollageItems = [
       ...collageItems,
@@ -261,15 +327,44 @@ const BoardDetailsPage = () => {
     saveToHistory({ collageItems: newCollageItems });
   };
 
-  const deleteImageFromMoodboard = (index) => {
-    const updatedPins = [...board.pins];
-    const deletedPin = updatedPins.splice(index, 1)[0];
-    const updatedCollageItems = collageItems.filter((item) => item.imageUrl !== deletedPin.imageUrl);
-    setBoard((prevBoard) => ({
-      ...prevBoard,
-      pins: updatedPins,
-    }));
-    setCollageItems(updatedCollageItems);
+  // const deleteImageFromMoodboard = (index) => {
+  //   const updatedPins = [...board.pins];
+  //   const deletedPin = updatedPins.splice(index, 1)[0];
+  //   const updatedCollageItems = collageItems.filter((item) => item.imageUrl !== deletedPin.imageUrl);
+  //   setBoard((prevBoard) => ({
+  //     ...prevBoard,
+  //     pins: updatedPins,
+  //   }));
+  //   setCollageItems(updatedCollageItems);
+  // };
+
+  const deleteImageFromMoodboard = async (index) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      const boardRef = doc(db, "user", user.uid, "boards", boardId);
+      
+      if (board.pins?.[index]) {
+        // It's a pin
+        const updatedPins = [...board.pins];
+        const deletedPin = updatedPins.splice(index, 1)[0];
+        
+        await updateDoc(boardRef, {
+          pins: updatedPins
+        });
+        
+        setBoard(prev => ({ ...prev, pins: updatedPins }));
+        const updatedCollageItems = collageItems.filter(item => item.imageUrl !== deletedPin.imageUrl);
+        setCollageItems(updatedCollageItems);
+      }
+      
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      setSnackbarMessage("Failed to delete image");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    }
   };
 
   const undo = () => {
@@ -303,10 +398,8 @@ const BoardDetailsPage = () => {
   };
 
   const changeOpacity = (index, value) => {
-    const updatedCollage = collageItems.map((item, i) => 
-      i === index ? { ...item, opacity: value } : item
-    );
-    console.log("Updated collage items:", updatedCollage);
+    const updatedCollage = [...collageItems];
+    updatedCollage[index].opacity = value;
     saveToHistory({ collageItems: updatedCollage });
   };
 
@@ -322,16 +415,16 @@ const BoardDetailsPage = () => {
       if (!selectedImage?.imageUrl) {
         throw new Error("No image URL found");
       }
-      setSnackbarMessage("Removing background...");
-      setSnackbarSeverity("info");
-      setSnackbarOpen(true);
       const response = await fetch(selectedImage.imageUrl);
-      if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
       const blob = await response.blob();
-      if (!blob) throw new Error("Failed to convert image to blob");
+      if (!blob) {
+        throw new Error("Failed to convert image to blob");
+      }
       const formData = new FormData();
       formData.append("image_file", blob);
-      formData.append("size", "auto");
       const apiResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
         method: "POST",
         headers: {
@@ -341,16 +434,17 @@ const BoardDetailsPage = () => {
       });
       if (!apiResponse.ok) {
         const errorData = await apiResponse.json();
-        throw new Error(`API Error: ${errorData?.errors?.[0]?.title || 'Unknown error'}`);
+        throw new Error(
+          `API Error: ${apiResponse.status} - ${errorData?.errors?.[0]?.title || 'Unknown error'}`
+        );
       }
       const resultBlob = await apiResponse.blob();
       const storageRef = ref(storage, `processed-images/${Date.now()}.png`);
       await uploadBytes(storageRef, resultBlob);
       const downloadUrl = await getDownloadURL(storageRef);
-      const updatedCollage = collageItems.map((item, i) => 
-        i === index ? { ...item, imageUrl: downloadUrl, hasTransparency: true } : item
-      );
-      setCollageItems(updatedCollage);
+      const updatedCollage = [...collageItems];
+      updatedCollage[index].imageUrl = downloadUrl;
+      saveToHistory({ collageItems: updatedCollage });
       const user = auth.currentUser;
       if (user && draftId) {
         await updateDoc(doc(db, "user", user.uid, "drafts", draftId), {
@@ -362,7 +456,9 @@ const BoardDetailsPage = () => {
     } 
     catch (error) {
       console.error(error);
-      setSnackbarMessage(error.message || "Failed to remove background");
+      setSnackbarMessage(
+        error.message || "Failed to remove the background. Please try again later."
+      );
       setSnackbarSeverity("error");
     } 
     finally {
@@ -413,34 +509,51 @@ const BoardDetailsPage = () => {
   };
 
   return (
-    <Container sx={styles.container}>
-      {error && <Typography color="error" align="center">{error}</Typography>}
+    <Box sx={styles.container}>
+      {error && (
+        <Typography variant="body1" sx={styles.errorMessage}>
+          {error}
+        </Typography>
+      )}
 
       {board && (
-        <StyledPaper>
+        <Paper elevation={3} sx={styles.collageContainer}>
           <Typography variant="h4" align="center" gutterBottom sx={{ color: "#214224" }}>
             {board.name}
           </Typography>
-
           <Typography variant="body1" align="center" gutterBottom sx={{ color: "#214224" }}>
             {board.description}
           </Typography>
 
           <Box ref={collageRef} sx={styles.collageArea} >
             {collageItems.map((item, index) => (
-              <Draggable key={`${index}-${item.imageUrl}`} position={{ x: item.x || 0, y: item.y || 0 }} onStop={(e, data) => handleDragStop(index, e, data)} cancel=".react-resizable-handle">
-                <div className="pinContainer">
-                  <ResizableBox width={item.width || 100} height={item.height || 100} minConstraints={[50, 50]} maxConstraints={[300, 300]} onResizeStop={(e, data) => handleResizeStop(index, e, data)}>
-                    <img src={item.imageUrl} alt={item.title}  onClick={() => setSelectedItem(index)}
-                      style={{ 
-                        width: "100%", 
-                        height: "100%", 
-                        objectFit: "cover", 
+              <Draggable
+                key={`${index}-${item.imageUrl}`}
+                position={{ x: item.x || 0, y: item.y || 0 }}
+                onStop={(e, data) => handleDragStop(index, e, data)}
+                cancel=".react-resizable-handle"
+              >
+                <div className="pinContainer" style={{ position: "absolute", zIndex: selectedItem === index ? 1000 : 1 }}>
+                  <ResizableBox
+                    width={item.width || 100}
+                    height={item.height || 100}
+                    minConstraints={[50, 50]}
+                    maxConstraints={[300, 300]}
+                    onResizeStop={(e, data) => handleResizeStop(index, e, data)}
+                  >
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      onClick={() => setSelectedItem(index)}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
                         borderRadius: "5px",
-                        transform: `${item.flipped ? "scaleX(-1)" : ""} rotate(${item.rotation || 0}deg)`,
-                        opacity: item.opacity !== undefined ? item.opacity : 1,
-                        backgroundColor: item.hasTransparency ? "transparent" : undefined
-                      }} />
+                        transform: `${item.flipped ? "scaleX(-1) " : ""}rotate(${item.rotation || 0}deg)`,
+                        opacity: item.opacity || 1,
+                      }}
+                    />
                   </ResizableBox>
                 </div>
               </Draggable>
@@ -461,19 +574,15 @@ const BoardDetailsPage = () => {
                 <Button variant="contained" onClick={() => flipImage(selectedItem)}>
                   Flip
                 </Button>
-
                 <Button variant="contained" onClick={() => rotateImage(selectedItem)}>
                   Rotate
                 </Button>
-
                 <Slider value={collageItems[selectedItem]?.opacity || 1} onChange={(e, value) => changeOpacity(selectedItem, value)} min={0} max={1} step={0.1} sx={{ width: 100 }} />
-                
-                <Button variant="contained" onClick={() => removeBackground(selectedItem)}>
-                  Remove Background
-                </Button>
-
                 <Button variant="contained" color="error" onClick={() => removeImage(selectedItem)}>
                   Remove
+                </Button>
+                <Button variant="contained" onClick={() => removeBackground(selectedItem)}>
+                  Remove Background
                 </Button>
               </>
             )}
@@ -496,12 +605,18 @@ const BoardDetailsPage = () => {
           <Typography variant="h5" align="center" gutterBottom sx={{ color: "#214224" }}>
             All Images
           </Typography>
+
           <Grid container spacing={2}>
             {board.pins?.map((pin, index) => (
-              <Grid item key={index} xs={12} sm={6} md={4} lg={3}>
+              <Grid item key={`pin-${index}`} xs={12} sm={6} md={4} lg={3}>
                 <StyledImageContainer>
-                  <img src={pin.imageUrl} alt={pin.title} style={{ width: "100%", height: "300px", objectFit: "cover", borderRadius: "5px" }} onClick={() => addImageToCollage(pin)} />
-                  
+                  <img 
+                    src={pin.imageUrl} 
+                    alt={pin.title} 
+                    style={{ width: "100%", height: "300px", objectFit: "cover", borderRadius: "5px" }} 
+                    onClick={() => addImageToCollage(pin)} 
+                  />
+
                   <StyledDeleteOverlay>
                     <IconButton onClick={() => deleteImageFromMoodboard(index)}>
                       <FontAwesomeIcon icon={faTrash} style={{ color: "#F5EDE6" }} />
@@ -510,8 +625,34 @@ const BoardDetailsPage = () => {
                 </StyledImageContainer>
               </Grid>
             ))}
+
+            {collages.map((collage, index) => {
+              const thumbnailImage = collage.collage[0]?.imageUrl || "";
+              return (
+                <Grid item key={`collage-${index}`} xs={12} sm={6} md={4} lg={3}>
+                  <StyledImageContainer>
+                    <img 
+                      src={thumbnailImage} 
+                      alt={`Collage ${index + 1}`} 
+                      style={{ width: "100%", height: "300px", objectFit: "cover", borderRadius: "5px" }} 
+                      onClick={() => addCollageToBoard(collage)}
+                    />
+
+                    <StyledDeleteOverlay>
+                      <IconButton onClick={() => deleteCollageFromMoodboard(index)}>
+                        <FontAwesomeIcon icon={faTrash} style={{ color: "#F5EDE6" }} />
+                      </IconButton>
+                    </StyledDeleteOverlay>
+
+                    <Box sx={{ position: "absolute", bottom: 8, left: 8, backgroundColor: "rgba(0, 0, 0, 0.6)", color: "white", padding: "4px 8px", borderRadius: 4 }}>
+                      <Typography variant="caption">Collage</Typography>
+                    </Box>
+                  </StyledImageContainer>
+                </Grid>
+              );
+            })}
           </Grid>
-        </StyledPaper> 
+        </Paper> 
       )}
 
       <Dialog open={showDeleteModal} onClose={() => setShowDeleteModal(false)} PaperProps={{ sx: { backgroundColor: "#214224", color: "#f0f0f0" }}} >
@@ -592,7 +733,6 @@ const BoardDetailsPage = () => {
 
       <Dialog open={showPostCollageModal} onClose={() => setShowPostCollageModal(false)} PaperProps={{ style: { borderRadius: "10px", padding: "20px", width: "400px", textAlign: "center", backgroundColor: "#214224" }}}>
         <DialogTitle sx={{ color: "#f0f0f0" }}>Name Your Collage</DialogTitle>
-
         <DialogContent>
           <TextField fullWidth variant="outlined" value={collageName} onChange={(e) => setCollageName(e.target.value)} error={!!collageNameError} helperText={collageNameError} placeholder="Enter Collage Name" sx={{ input: { color: "#f0f0f0" }, border: "#f0f0f0", '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#f0f0f0' }, '&:hover fieldset': { borderColor: '#f0f0f0' }}}} />
         </DialogContent>
@@ -607,8 +747,7 @@ const BoardDetailsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
-    </Container>
+    </Box>
   );
 };
 
@@ -654,11 +793,6 @@ const styles = {
     backgroundColor: "#808080",
     marginBottom: 2,
     overflow: "hidden"
-  },
-  viewsCount: {
-    marginTop: "10px",
-    color: "#214224",
-    fontFamily: "'TanPearl', sans-serif",
   },
   modalOverlay: {
     position: "fixed",

@@ -15,6 +15,7 @@ const ChangeDetailsPage = () => {
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [originalUsername, setOriginalUsername] = useState("");
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   const navigate = useNavigate();
 
@@ -27,6 +28,9 @@ const ChangeDetailsPage = () => {
           setNewUsername(userDoc.data().username || "");
           setOriginalUsername(userDoc.data().username || "");
           setNewBio(userDoc.data().bio || "");
+          if (userDoc.data().username === "admin") {
+            setIsAdminUser(true);
+          }
         }
       }
     };
@@ -52,6 +56,7 @@ const ChangeDetailsPage = () => {
   };
 
   const validateUsername = async (username) => {
+    if (isAdminUser) return true;
     if (!username.trim()) {
       setUsernameError("Username is required");
       return false;
@@ -130,10 +135,13 @@ const ChangeDetailsPage = () => {
       </Typography>
 
       <Box component="form" onSubmit={handleSaveChanges} sx={{ maxWidth: 600, margin: "0 auto" }}>
-        <TextField fullWidth placeholder="Username" value={newUsername} onChange={handleUsernameChange} error={!!usernameError} helperText={usernameError || (isCheckingUsername ? "Checking availability..." : "")} sx={{ marginBottom: 2 }} />
+        <TextField fullWidth placeholder="Username" value={newUsername} onChange={handleUsernameChange} error={!!usernameError} helperText={usernameError || (isCheckingUsername ? "Checking availability..." : "")} sx={{ marginBottom: 2 }} disabled={isAdminUser} />
+        
         <TextField fullWidth placeholder="Bio" value={newBio} onChange={(e) => setNewBio(e.target.value)} sx={{ marginBottom: 2 }} multiline rows={4} />
+        
         <Button type="submit" variant="contained" disabled={!!usernameError || isCheckingUsername} sx={{ backgroundColor: "#214224", color: "#f0f0f0" }}>
           {isCheckingUsername ? "Checking..." : "Save Changes"}
+        
         </Button>
         <Button variant="contained" onClick={() => navigate("/userprofilepage")} sx={{ backgroundColor: "#ff5757", color: "#f0f0f0", marginLeft: "20px" }}>
           Cancel

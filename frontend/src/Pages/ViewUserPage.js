@@ -332,8 +332,8 @@ const ViewUserPage = () => {
       </Box>
 
       <Box sx={{ marginTop: 4 }}>
-        <Typography variant="h5" sx={{ marginBottom: 2, color: "#214224", fontFamily: "'TanPearl', sans-serif" }}>
-          Public Collages
+        <Typography variant="h5" sx={{ marginBottom: 2, color: "#214224", fontFamily: "'TanPearl', sans-serif", fontWeight: "bold" }}>
+          Collages
         </Typography>
 
         {collages.length === 0 ? (

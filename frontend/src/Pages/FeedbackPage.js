@@ -70,7 +70,7 @@ const FeedbackPage = () => {
       </Typography>
 
       <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 600, margin: "0 auto", display: "flex", flexDirection: "column", gap: 3 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }} role="group" aria-labelledby="rating-label">
           <Typography variant="h6" sx={{ color: "#214224", marginBottom: 1 }}>
             How would you rate your experience?
           </Typography>

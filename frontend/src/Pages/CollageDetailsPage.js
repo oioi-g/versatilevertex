@@ -18,8 +18,49 @@ const CollageDetailsPage = () => {
   const [newComment, setNewComment] = useState("");
   const [likedCollages, setLikedCollages] = useState([]);
   const [uploaderUsername, setUploaderUsername] = useState("");
+  const [userImages, setUserImages] = useState({});
 
   const collageAreaRef = useRef(null);
+
+  // useEffect(() => {
+  //   const fetchCollage = async () => {
+  //     try {
+  //       const collageRef = doc(db, "publicCollages", collageId);
+  //       const collageSnap = await getDoc(collageRef);
+  //       if (collageSnap.exists()) {
+  //         const collageData = collageSnap.data();
+  //         if (collageData.postedBy) {
+  //           const userRef = doc(db, "user", collageData.postedBy);
+  //           const userSnap = await getDoc(userRef);
+  //           if (userSnap.exists()) {
+  //             setUploaderUsername(userSnap.data().username || "Unknown User");
+  //           }
+  //         }
+  //         const validatedCollage = collageData.collage.map((item) => ({
+  //           ...item,
+  //           layout: {
+  //             x: item.layout?.x ?? item.x ?? 0,
+  //             y: item.layout?.y ?? item.y ?? 0,
+  //             width: item.layout?.width ?? item.width ?? 100,
+  //             height: item.layout?.height ?? item.height ?? 100,
+  //             rotation: item.layout?.rotation ?? item.rotation ?? 0,
+  //             zIndex: item.layout?.zIndex ?? item.zIndex ?? 0,
+  //           },
+  //         }));
+  //         setCollage({ ...collageData, collage: validatedCollage });
+  //         await updateDoc(collageRef, {
+  //           views: increment(1),
+  //         });
+  //       } else {
+  //         setError("Collage not found.");
+  //       }
+  //     } catch (error) {
+  //       console.error(error);
+  //       setError("Failed to fetch the collage. Please try again later.");
+  //     }
+  //   };
+  //   fetchCollage();
+  // }, [collageId]);
 
   useEffect(() => {
     const fetchCollage = async () => {
@@ -28,7 +69,6 @@ const CollageDetailsPage = () => {
         const collageSnap = await getDoc(collageRef);
         if (collageSnap.exists()) {
           const collageData = collageSnap.data();
-          console.log("Fetched collage data:", collageData);
           if (collageData.postedBy) {
             const userRef = doc(db, "user", collageData.postedBy);
             const userSnap = await getDoc(userRef);
@@ -36,32 +76,41 @@ const CollageDetailsPage = () => {
               setUploaderUsername(userSnap.data().username || "Unknown User");
             }
           }
-          const validatedCollage = collageData.collage.map((item) => ({
+          // const validatedCollage = collageData.collage.map((item) => {
+          //   const layout = {
+          //     x: item.layout?.x ?? item.x ?? 0,
+          //     y: item.layout?.y ?? item.y ?? 0,
+          //     width: item.layout?.width ?? item.width ?? 100,
+          //     height: item.layout?.height ?? item.height ?? 100,
+          //     rotation: item.layout?.rotation ?? item.rotation ?? 0,
+          //     zIndex: item.layout?.zIndex ?? item.zIndex ?? 0,
+          //   };
+          //   return {
+          //     ...item,
+          //     layout,
+          //     opacity: item.opacity ?? 1,
+          //     flipped: item.flipped ?? false
+          //   };
+          // });
+          const validatedCollage = collageData.collage.map(item => ({
             ...item,
-            layout: {
-              x: item.layout?.x !== undefined ? item.layout.x : 0,
-              y: item.layout?.y !== undefined ? item.layout.y : 0,
-              width: item.layout?.width !== undefined ? item.layout.width : 100,
-              height: item.layout?.height !== undefined ? item.layout.height : 100,
-              rotation: item.layout?.rotation !== undefined ? item.layout.rotation : 0,
-              zIndex: item.layout?.zIndex !== undefined ? item.layout.zIndex : 0,
-            },
+            x: item.x ?? item.layout?.x ?? 0,
+            y: item.y ?? item.layout?.y ?? 0,
+            width: item.width ?? item.layout?.width ?? 100,
+            height: item.height ?? item.layout?.height ?? 100,
+            rotation: item.rotation ?? item.layout?.rotation ?? 0,
+            zIndex: item.zIndex ?? item.layout?.zIndex ?? 0,
+            opacity: item.opacity ?? 1,
+            flipped: item.flipped ?? false
           }));
-          console.log("Validated collage data:", validatedCollage);
-          setCollage({ ...collageData, collage: validatedCollage });
+          
+          setCollage({ 
+            ...collageData, 
+            collage: validatedCollage 
+          });
           await updateDoc(collageRef, {
             views: increment(1),
           });
-          const commentsRef = collection(db, "publicCollages", collageId, "comments");
-          const q = query(commentsRef);
-          const unsubscribe = onSnapshot(q, (snapshot) => {
-            const commentsData = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
-            setComments(commentsData);
-          });
-          return () => unsubscribe();
         } 
         else {
           setError("Collage not found.");
@@ -76,6 +125,46 @@ const CollageDetailsPage = () => {
   }, [collageId]);
   
   useEffect(() => {
+    const commentsRef = collection(db, "publicCollages", collageId, "comments");
+    const q = query(commentsRef);
+    
+    const unsubscribeComments = onSnapshot(q, async (snapshot) => {
+      const commentsData = await Promise.all(
+        snapshot.docs.map(async (doc) => {
+          const commentData = doc.data();
+          return {
+            id: doc.id,
+            ...commentData,
+          };
+        })
+      );
+      setComments(commentsData);
+    });
+
+    return () => unsubscribeComments();
+  }, [collageId]);
+
+  // Track profile image changes for commenters
+  useEffect(() => {
+    const unsubscribers = [];
+    
+    comments.forEach(comment => {
+      const userRef = doc(db, "user", comment.postedBy);
+      const unsubscribe = onSnapshot(userRef, (userSnap) => {
+        if (userSnap.exists()) {
+          setUserImages(prev => ({
+            ...prev,
+            [comment.postedBy]: userSnap.data().profileImage || "/defaultimage.png"
+          }));
+        }
+      });
+      unsubscribers.push(unsubscribe);
+    });
+
+    return () => unsubscribers.forEach(unsub => unsub());
+  }, [comments]);
+
+  useEffect(() => {
     const fetchLikedCollages = async () => {
       const user = getAuth().currentUser;
       if (!user) return;
@@ -87,8 +176,7 @@ const CollageDetailsPage = () => {
           ...doc.data(),
         }));
         setLikedCollages(likedCollagesData);
-      } 
-      catch (error) {
+      } catch (error) {
         console.error(error);
       }
     };
@@ -105,8 +193,7 @@ const CollageDetailsPage = () => {
       setTimeout(() => {
         window.location.href = "/homepage";
       }, 2000);
-    } 
-    catch (error) {
+    } catch (error) {
       console.error(error);
       setSnackbarMessage("Failed to delete the collage. Please try again later.");
       setSnackbarSeverity("error");
@@ -131,8 +218,7 @@ const CollageDetailsPage = () => {
           likes: increment(-1),
         });
         setLikedCollages((prev) => prev.filter(liked => liked.id !== collageId));
-      } 
-      else {
+      } else {
         await setDoc(userLikeRef, {
           liked: true,
           name: collage.name,
@@ -146,8 +232,7 @@ const CollageDetailsPage = () => {
       }
       const updatedCollageSnap = await getDoc(collageRef);
       setCollage(updatedCollageSnap.data());
-    } 
-    catch (error) {
+    } catch (error) {
       console.error(error);
       setSnackbarMessage("Failed to update like status");
       setSnackbarSeverity("error");
@@ -177,14 +262,11 @@ const CollageDetailsPage = () => {
           text: "Here's an amazing collage I found.",
           url: `${window.location.origin}/collagedetailspage/${collageId}`,
         });
-        console.log("Successfully shared");
         handleShareCollage();
-      } 
-      catch (error) {
+      } catch (error) {
         console.error("Error sharing:", error);
       }
-    } 
-    else {
+    } else {
       console.error("Web Share API not supported");
     }
   };
@@ -202,8 +284,7 @@ const CollageDetailsPage = () => {
           new Promise((resolve, reject) => {
             if (img.complete) {
               resolve();
-            } 
-            else {
+            } else {
               img.onload = resolve;
               img.onerror = reject;
             }
@@ -235,24 +316,24 @@ const CollageDetailsPage = () => {
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         const username = userData.username || user.email;
+        const profileImageUrl = userData.profileImage || "";
         const commentsRef = collection(db, "publicCollages", collageId, "comments");
         await addDoc(commentsRef, {
           text: newComment,
           postedBy: user.uid,
           postedByUsername: username,
+          postedByProfileImage: profileImageUrl,
           postedAt: new Date(),
           likes: 0,
         });
         setNewComment("");
-      } 
-      else {
+      } else {
         console.error("User document not found in Firestore.");
         setSnackbarMessage("Failed to post comment. User data not found.");
         setSnackbarSeverity("error");
         setSnackbarOpen(true);
       }
-    } 
-    catch (error) {
+    } catch (error) {
       console.error("Error posting comment:", error);
       setSnackbarMessage("Failed to post comment. Please try again later.");
       setSnackbarSeverity("error");
@@ -273,15 +354,13 @@ const CollageDetailsPage = () => {
         await updateDoc(commentRef, {
           likes: increment(-1),
         });
-      } 
-      else {
+      } else {
         await setDoc(likeDoc, { likedAt: new Date() });
         await updateDoc(commentRef, {
           likes: increment(1),
         });
       }
-    } 
-    catch (error) {
+    } catch (error) {
       console.error(error);
     }
   };
@@ -296,15 +375,13 @@ const CollageDetailsPage = () => {
         setSnackbarMessage("Comment deleted successfully!");
         setSnackbarSeverity("success");
         setSnackbarOpen(true);
-      } 
-      catch (error) {
+      } catch (error) {
         console.error("Error deleting comment:", error);
         setSnackbarMessage("Failed to delete the comment. Please try again later.");
         setSnackbarSeverity("error");
         setSnackbarOpen(true);
       }
-    } 
-    else {
+    } else {
       setSnackbarMessage("You do not have permission to delete this comment.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
@@ -319,10 +396,6 @@ const CollageDetailsPage = () => {
 
   return (
     <Box sx={styles.container}>
-      <Typography variant="h4" sx={styles.title}>
-        Created by {uploaderUsername}
-      </Typography>
-
       {error && (
         <Typography variant="body1" sx={styles.errorMessage}>
           {error}
@@ -337,28 +410,39 @@ const CollageDetailsPage = () => {
 
           <Box sx={styles.collageArea} ref={collageAreaRef}>
             {collage.collage.map((item, index) => (
-              <Box key={index}
+              <Box 
+                key={index}
                 sx={{
-                  position: "absolute",
-                  left: `${item.layout?.x ?? 0}px`,
-                  top: `${item.layout?.y ?? 0}px`,
-                  width: `${item.layout?.width ?? 100}px`,
-                  height: `${item.layout?.height ?? 100}px`,
-                  transform: `rotate(${item.layout?.rotation ?? 0}deg)`,
-                  zIndex: item.layout?.zIndex ?? 0,
+                  position: "relative",
+                  left: `${item.x || item.layout?.x || 0}px`,
+                  top: `${item.y || item.layout?.y || 0}px`,
+                  width: `${item.width || item.layout?.width || 100}px`,
+                  height: `${item.height || item.layout?.height || 100}px`,
+                  transform: `
+                    rotate(${item.rotation || item.layout?.rotation || 0}deg)
+                    ${item.flipped ? 'scaleX(-1)' : ''}
+                  `,
+                  zIndex: item.zIndex || item.layout?.zIndex || 0,
                   overflow: "hidden",
                   opacity: item.opacity !== undefined ? item.opacity : 1
-                }}>
-                <img src={item.imageUrl} alt={`Collage item ${index}`} crossOrigin="anonymous" 
+                }}
+              >
+                <img 
+                  src={item.imageUrl} 
+                  alt={`Collage item ${index}`} 
                   style={{ 
-                    width: `${item.layout.width}px`, 
-                    height: `${item.layout.height}px`, 
-                    objectFit: "cover",
-                    transform: item.flipped ? "scaleX(-1)" : "none"
-                  }} />
+                    width: '100%',
+                    height: '100%',
+                    objectFit: "cover"
+                  }} 
+                />
               </Box>
             ))}
           </Box>
+
+          <Typography variant="h4" sx={styles.title}>
+            Created by {uploaderUsername}
+          </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
             <Typography variant="body1" sx={styles.viewsCount}>
@@ -372,17 +456,43 @@ const CollageDetailsPage = () => {
 
           {collage && auth.currentUser && collage.postedBy === auth.currentUser.uid && (
             <>
-              <Button variant="contained" onClick={() => setShowConfirmationModal(true)} sx={{ marginTop: "10px", fontFamily: "'TanPearl', sans-serif", backgroundColor: "#ff5757", color: "#f0f0f0", marginLeft: "10px" }} >
+              <Button 
+                variant="contained" 
+                onClick={() => setShowConfirmationModal(true)} 
+                sx={{ 
+                  marginTop: "10px", 
+                  fontFamily: "'TanPearl', sans-serif", 
+                  backgroundColor: "#ff5757", 
+                  color: "#f0f0f0", 
+                  marginLeft: "10px" 
+                }}
+              >
                 Delete Collage
               </Button>
 
-              <IconButton onClick={handleDownloadCollage} sx={{ marginTop: "10px", backgroundColor: "transparent", color: "#214224", marginLeft: "10px" }} >
+              <IconButton 
+                onClick={handleDownloadCollage} 
+                sx={{ 
+                  marginTop: "10px", 
+                  backgroundColor: "transparent", 
+                  color: "#214224", 
+                  marginLeft: "10px" 
+                }}
+              >
                 <Download />
               </IconButton>
             </>
           )}
           
-          <IconButton onClick={handleNativeShareCollage} sx={{ marginTop: "10px", backgroundColor: "transparent", color: "#214224", marginLeft: "10px" }} >
+          <IconButton 
+            onClick={handleNativeShareCollage} 
+            sx={{ 
+              marginTop: "10px", 
+              backgroundColor: "transparent", 
+              color: "#214224", 
+              marginLeft: "10px" 
+            }}
+          >
             <Share />
           </IconButton>
         </Paper>
@@ -393,24 +503,49 @@ const CollageDetailsPage = () => {
           Comments
         </Typography>
 
-        <TextField fullWidth variant="outlined" placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} sx={{ marginBottom: "10px" }} />
+        <TextField 
+          fullWidth 
+          variant="outlined" 
+          placeholder="Add a comment..." 
+          value={newComment} 
+          onChange={(e) => setNewComment(e.target.value)} 
+          sx={{ marginBottom: "10px" }} 
+        />
         
-        <Button variant="contained" onClick={handlePostComment} sx={{ marginBottom: "20px" }} >
+        <Button 
+          variant="contained" 
+          onClick={handlePostComment} 
+          sx={{ marginBottom: "20px" }}
+        >
           Post Comment
         </Button>
 
         <List>
           {comments.map((comment) => (
             <ListItem key={comment.id}>
-              <Avatar sx={{ marginRight: "10px" }}>
-                {comment.postedByUsername.charAt(0)}
+              <Avatar 
+                sx={{ 
+                  marginRight: "10px", 
+                  width: 40, 
+                  height: 40, 
+                  border: "2px solid #214224" 
+                }} 
+                src={userImages[comment.postedBy] || comment.postedByProfileImage || "/defaultimage.png"} 
+                alt={comment.postedByUsername}
+              >
+                {!userImages[comment.postedBy] && !comment.postedByProfileImage && comment.postedByUsername.charAt(0)}
               </Avatar>
 
-              <ListItemText primary={comment.postedByUsername} secondary={comment.text} />
+              <ListItemText 
+                primary={comment.postedByUsername} 
+                secondary={comment.text} 
+              />
 
               <IconButton onClick={() => handleLikeComment(comment.id)}>
                 <ThumbUp />
-                <Typography sx={{ marginLeft: "5px" }}>{comment.likes}</Typography>
+                <Typography sx={{ marginLeft: "5px" }}>
+                  {comment.likes}
+                </Typography>
               </IconButton>
 
               {(auth.currentUser?.uid === comment.postedBy || auth.currentUser?.uid === collage?.postedBy) && (
@@ -423,8 +558,14 @@ const CollageDetailsPage = () => {
         </List>
       </Box>
 
-      <Dialog open={showConfirmationModal} onClose={() => setShowConfirmationModal(false)} PaperProps={{ sx: { backgroundColor: "#214224", color: "#f0f0f0"}}}>
-        <DialogTitle sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>Are you sure?</DialogTitle>
+      <Dialog 
+        open={showConfirmationModal} 
+        onClose={() => setShowConfirmationModal(false)} 
+        PaperProps={{ sx: { backgroundColor: "#214224", color: "#f0f0f0" }}}
+      >
+        <DialogTitle sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
+          Are you sure?
+        </DialogTitle>
         
         <DialogContent>
           <DialogContentText sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
@@ -433,16 +574,32 @@ const CollageDetailsPage = () => {
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setShowConfirmationModal(false)} sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>Cancel</Button>
+          <Button 
+            onClick={() => setShowConfirmationModal(false)} 
+            sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}
+          >
+            Cancel
+          </Button>
           
-          <Button onClick={handleDeleteCollage} sx={{ fontFamily: "'TanPearl', sans-serif", backgroundColor: "#ff5757", color: "#f0f0f0" }}>
+          <Button 
+            onClick={handleDeleteCollage} 
+            sx={{ fontFamily: "'TanPearl', sans-serif", backgroundColor: "#ff5757", color: "#f0f0f0" }}
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose} >
-        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} >
+      <Snackbar 
+        open={snackbarOpen} 
+        autoHideDuration={6000} 
+        onClose={handleSnackbarClose}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

@@ -11,6 +11,7 @@ Chart.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement
 
 const UserDashboardPage = () => {
   const [collages, setCollages] = useState([]);
+  const [commentsData, setCommentsData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -18,6 +19,7 @@ const UserDashboardPage = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,14 +34,19 @@ const UserDashboardPage = () => {
         const q = query(collagesRef, where("postedBy", "==", user.uid));
         const querySnapshot = await getDocs(q);
         const collagesData = [];
-        querySnapshot.forEach((doc) => {
+        const commentsCount = {};
+        for (const doc of querySnapshot.docs) {
           const collage = doc.data();
           collagesData.push({
             id: doc.id,
             ...collage,
           });
-        });
+          const commentsRef = collection(db, "publicCollages", doc.id, "comments");
+          const commentsSnapshot = await getDocs(commentsRef);
+          commentsCount[doc.id] = commentsSnapshot.size;
+        }
         setCollages(collagesData);
+        setCommentsData(commentsCount);
       } 
       catch (error) {
         console.error(error);
@@ -52,7 +59,6 @@ const UserDashboardPage = () => {
     fetchCollages();
   }, []);
 
-  // Function to generate a color palette
   const generateColorPalette = (count) => {
     const baseColors = [
       "rgba(255, 99, 132, 0.7)",
@@ -66,7 +72,6 @@ const UserDashboardPage = () => {
       "rgba(255, 99, 132, 0.7)",
       "rgba(75, 192, 192, 0.7)"
     ];
-    
     const colors = [];
     for (let i = 0; i < count; i++) {
       colors.push(baseColors[i % baseColors.length]);
@@ -131,6 +136,7 @@ const UserDashboardPage = () => {
   const viewsData = collages.map((collage) => collage.views || 0);
   const likesData = collages.map((collage) => collage.likes || 0);
   const sharesData = collages.map((collage) => collage.shares || 0);
+  const commentsCountData = collages.map((collage) => commentsData[collage.id] || 0);
   const collageLabels = collages.map((collage) => collage.name);
 
   const barChartOptions = {
@@ -175,39 +181,6 @@ const UserDashboardPage = () => {
     },
   };
 
-  // const barChartData = {
-  //   labels: collageLabels,
-  //   datasets: [
-  //     {
-  //       label: "Views",
-  //       data: viewsData,
-  //       backgroundColor: generateColorPalette(collages.length),
-  //       borderColor: generateColorPalette(collages.length).map(color => 
-  //         color.replace('0.7', '1')
-  //       ),
-  //       borderWidth: 1,
-  //     },
-  //     {
-  //       label: "Likes",
-  //       data: likesData,
-  //       backgroundColor: generateColorPalette(collages.length),
-  //       borderColor: generateColorPalette(collages.length).map(color => 
-  //         color.replace('0.7', '1')
-  //       ),
-  //       borderWidth: 1,
-  //     },
-  //     {
-  //       label: "Shares",
-  //       data: sharesData,
-  //       backgroundColor: generateColorPalette(collages.length),
-  //       borderColor: generateColorPalette(collages.length).map(color => 
-  //         color.replace('0.7', '1')
-  //       ),
-  //       borderWidth: 1,
-  //     },
-  //   ],
-  // };
-
   const barChartData = {
     labels: collageLabels,
     datasets: [
@@ -230,6 +203,13 @@ const UserDashboardPage = () => {
         data: sharesData,
         backgroundColor: "rgba(75, 192, 192, 0.7)",
         borderColor: "rgba(75, 192, 192, 1)",
+        borderWidth: 1,
+      },
+      {
+        label: "Comments",
+        data: commentsCountData,
+        backgroundColor: "rgba(153, 102, 255, 0.7)",
+        borderColor: "rgba(153, 102, 255, 1)",
         borderWidth: 1,
       },
     ],
@@ -262,7 +242,9 @@ const UserDashboardPage = () => {
     datasets: [
       {
         label: "Engagement",
-        data: viewsData.map((view, index) => view + likesData[index] + sharesData[index]),
+        data: viewsData.map((view, index) => 
+          view + likesData[index] + sharesData[index] + commentsCountData[index]
+        ),
         backgroundColor: generateColorPalette(collages.length),
         borderColor: generateColorPalette(collages.length).map(color => 
           color.replace('0.7', '1')
@@ -307,7 +289,7 @@ const UserDashboardPage = () => {
                   <Delete />
                 </IconButton>
   
-                <CardContent>
+                <CardContent data-testid="collage-card">
                   <Typography variant="h6" sx={{ marginBottom: 2, color: "#f0f0f0" }}>
                     {collage.name}
                   </Typography>
@@ -322,6 +304,10 @@ const UserDashboardPage = () => {
   
                   <Typography variant="body2" sx={{ color: "#f0f0f0" }}>
                     Shares: {collage.shares || 0}
+                  </Typography>
+                  
+                  <Typography variant="body2" sx={{ color: "#f0f0f0" }}>
+                    Comments: {commentsData[collage.id] || 0}
                   </Typography>
                 </CardContent>
               </Card>

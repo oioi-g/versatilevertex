@@ -317,7 +317,7 @@ const DraftDetailsPage = () => {
             {draft.name}
           </Typography>
 
-          <Box ref={collageRef} sx={styles.collageArea} >
+          {/* <Box ref={collageRef} sx={styles.collageArea} >
             {collageItems.map((item, index) => (
               <Draggable key={`${index}-${item.imageUrl}`} position={{ x: item.x || 0, y: item.y || 0 }} onStop={(e, data) => handleDragStop(index, e, data)} cancel=".react-resizable-handle"
                 sx={{ 
@@ -339,7 +339,43 @@ const DraftDetailsPage = () => {
                 </div>
               </Draggable>
             ))}
-          </Box>
+          </Box> */}
+
+<Box ref={collageRef} sx={styles.collageArea}>
+  {collageItems.map((item, index) => (
+    <Draggable 
+      key={`${index}-${item.imageUrl}`} 
+      position={{ x: item.x || 0, y: item.y || 0 }} 
+      onStop={(e, data) => handleDragStop(index, e, data)} 
+      cancel=".react-resizable-handle"
+    >
+      <div className="pinContainer">
+        <ResizableBox 
+          width={item.width || 100} 
+          height={item.height || 100}
+          minConstraints={[50, 50]}
+          maxConstraints={[300, 300]} 
+          onResizeStop={(e, data) => handleResizeStop(index, e, data)}
+        >
+          <img 
+            src={item.imageUrl} 
+            alt={item.title} 
+            onClick={() => setSelectedItem(index)}
+            style={{ 
+              width: "100%", 
+              height: "100%", 
+              objectFit: "cover", 
+              borderRadius: "5px",
+              transform: `${item.flipped ? "scaleX(-1)" : ""} rotate(${item.rotation || 0}deg)`,
+              opacity: item.opacity !== undefined ? item.opacity : 1,
+              backgroundColor: item.hasTransparency ? "transparent" : undefined
+            }} 
+          />
+        </ResizableBox>
+      </div>
+    </Draggable>
+  ))}
+</Box>
 
           <Box sx={{ display: "flex", gap: 2, marginBottom: 2 }}>
             <Button variant="contained" onClick={undo}>
