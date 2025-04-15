@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, addDoc, arrayUnion, query, where, getDoc, collectionGroup, onSnapshot, increment } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc, addDoc, arrayUnion, query, where, collectionGroup, onSnapshot, increment } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { getAuth } from "firebase/auth";
 import { Link } from "react-router-dom";
@@ -56,45 +56,51 @@ const HomePage = () => {
     fetchBlockingRelationships();
   }, []);
 
-  const fetchImages = async (searchQuery = "") => {
-    try {
-      let imagesCollection = collection(db, "unsplashImages");
-      let snapshot;
-      if (searchQuery) {
-        const lowercaseQuery = searchQuery.toLowerCase();
-        const q = query(
-          imagesCollection,
-          where("description", ">=", lowercaseQuery),
-          where("description", "<=", lowercaseQuery + "\uf8ff")
-        );
-        snapshot = await getDocs(q);
-      } 
-      else {
-        snapshot = await getDocs(imagesCollection);
-      }  
-      let imagesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      const shuffledImages = imagesData.sort(() => 0.5 - Math.random());
-      const uniqueImages = [];
-      const imageUrlSet = new Set();
-      for (const image of shuffledImages) {
-        if (!imageUrlSet.has(image.imageUrl)) {
-          uniqueImages.push(image);
-          imageUrlSet.add(image.imageUrl);
-        }
-      }
-      setImages(uniqueImages.slice(0, 30));
-    } 
-    catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
-    fetchImages();
-  }, []);
+    let unsubscribe;
+    
+    const setupImageListeners = async () => {
+      try {
+        let imagesCollection = collection(db, "unsplashImages");
+        let q;        
+        if (searchQuery) {
+          const lowercaseQuery = searchQuery.toLowerCase();
+          q = query(
+            imagesCollection,
+            where("description", ">=", lowercaseQuery),
+            where("description", "<=", lowercaseQuery + "\uf8ff")
+          );
+        } 
+        else {
+          q = query(imagesCollection);
+        }        
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          let imagesData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            likes: doc.data().likes || 0
+          }));
+          const uniqueImages = [];
+          const imageUrlSet = new Set();          
+          for (const image of imagesData) {
+            if (!imageUrlSet.has(image.imageUrl)) {
+              uniqueImages.push(image);
+              imageUrlSet.add(image.imageUrl);
+            }
+          }
+          const shuffledImages = uniqueImages.sort(() => 0.5 - Math.random());
+          setImages(shuffledImages);
+        });
+      } 
+      catch (err) {
+        console.error(err);
+      }
+    };
+    setupImageListeners();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     const fetchBoards = async () => {
@@ -121,23 +127,17 @@ const HomePage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchLikedImages = async () => {
-      const user = getAuth().currentUser;
-      if (!user) return;
-      try {
-        const likedImagesCollection = collection(db, "user", user.uid, "liked_images");
-        const snapshot = await getDocs(likedImagesCollection);
-        const likedImagesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setLikedImages(likedImagesData);
-      } 
-      catch (error) {
-        console.error(error);
-      }
-    };
-    fetchLikedImages();
+    const user = auth.currentUser;
+    if (!user) return;
+    const likedImagesRef = collection(db, "user", user.uid, "liked_images");
+    const unsubscribe = onSnapshot(likedImagesRef, (snapshot) => {
+      const likedImagesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setLikedImages(likedImagesData);
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -166,13 +166,13 @@ const HomePage = () => {
       console.error("User not authenticated.");
       return;
     }
-    const userRef = doc(db, "user", user.uid, "liked_images", image.id);
     try {
+      const userRef = doc(db, "user", user.uid, "liked_images", image.id);
+      const imageRef = doc(db, "unsplashImages", image.id);
       if (likedImages.some((likedImage) => likedImage.id === image.id)) {
         await deleteDoc(userRef);
-        setLikedImages((prevLikes) => prevLikes.filter((likedImage) => likedImage.id !== image.id));
-        await updateDoc(doc(db, "unsplashImages", image.id), {
-          likes: (image.likes || 0) - 1,
+        await updateDoc(imageRef, {
+          likes: increment(-1)
         });
       } 
       else {
@@ -182,22 +182,16 @@ const HomePage = () => {
           description: image.description,
           timestamp: new Date(),
         });
-        setLikedImages((prevLikes) => [...prevLikes, image]);
-        await updateDoc(doc(db, "unsplashImages", image.id), {
-          likes: (image.likes || 0) + 1,
+        await updateDoc(imageRef, {
+          likes: increment(1)
         });
-      }
-      const updatedImageDoc = await getDoc(doc(db, "unsplashImages", image.id));
-      const updatedImage = { id: updatedImageDoc.id, ...updatedImageDoc.data() };
-      setImages((prevImages) =>
-        prevImages.map((img) => (img.id === image.id ? updatedImage : img))
-      );
-      if (currentImage && currentImage.id === image.id) {
-        setCurrentImage(updatedImage);
       }
     } 
     catch (error) {
       console.error(error);
+      setSnackbarMessage("Failed to update like status");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
     }
   };
   
@@ -504,7 +498,7 @@ const HomePage = () => {
         {activeTab === "images" && (
           <Box sx={{ textAlign: 'center', marginBottom: '10px', marginTop: '20px' }}>
             <TextField type="text" placeholder="Search images" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} sx={{ width: '300px', '& .MuiOutlinedInput-root': { '& fieldset': { borderColor: '#214224' }, '&:hover fieldset': { borderColor: '#214224' }}}} variant="outlined" />
-            <Button variant="contained" onClick={() => fetchImages(searchQuery)} sx={{ marginLeft: '10px', backgroundColor: '#214224', color: '#f0f0f0', borderRadius: '4px', fontFamily: 'TanPearl, sans-serif', textTransform: 'none', padding: '8px 16px', '&:hover': { backgroundColor: '#f0f0f0', color: '#214224', border: '1px solid #214224' }}}>
+            <Button variant="contained" onClick={() => setSearchQuery(searchQuery)} sx={{ marginLeft: '10px', backgroundColor: '#214224', color: '#f0f0f0', borderRadius: '4px', fontFamily: 'TanPearl, sans-serif', textTransform: 'none', padding: '8px 16px', '&:hover': { backgroundColor: '#f0f0f0', color: '#214224', border: '1px solid #214224' }}}>
               Search
             </Button>
           </Box>
@@ -608,7 +602,14 @@ const HomePage = () => {
         )}
         
         {showImageCard && currentImage && (
-          <ImageCard image={currentImage} onClose={() => setShowImageCard(false)} onLike={() => handleLikeImage(currentImage)} onBookmark={() => handleAddToLibrary(currentImage)} onReport={handleReportImage} isLiked={likedImages.some((likedImage) => likedImage.id === currentImage.id)} likesCount={currentImage.likes || 0} />
+          <ImageCard image={currentImage} 
+          onClose={() => setShowImageCard(false)} 
+          onLike={() => handleLikeImage(currentImage)} 
+          onBookmark={() => handleAddToLibrary(currentImage)} 
+          onReport={handleReportImage} 
+          isLiked={likedImages.some((likedImage) => likedImage.id === currentImage.id)} 
+          likesCount={currentImage.likes || 0} 
+          />
         )}
 
         {showBoardModal && (

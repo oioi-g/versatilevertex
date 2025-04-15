@@ -1,10 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, IconButton, Container } from "@mui/material";
 import { Favorite, Bookmark, Close, Report } from '@mui/icons-material';
 import ReportDialog from "./ReportDialog";
 
 const ImageCard = ({ image, onClose, onLike, onBookmark, isLiked, likesCount, onReport }) => {
   const [reportOpen, setReportOpen] = useState(false);
+  let [currentLikes, setCurrentLikes] = useState(likesCount);
+  const [currentIsLiked, setCurrentIsLiked] = useState(isLiked);
+
+  useEffect(() => {
+    setCurrentLikes(likesCount);
+    setCurrentIsLiked(isLiked);
+  }, [likesCount, isLiked]);
+
+  const handleLikeClick = () => {
+    if (currentIsLiked) {
+      setCurrentLikes(prev => prev - 1);
+    } 
+    else {
+      setCurrentLikes(prev => prev + 1);
+    }
+    setCurrentIsLiked(!currentIsLiked);
+    onLike();
+  };
 
   return (
     <Container>
@@ -23,13 +41,12 @@ const ImageCard = ({ image, onClose, onLike, onBookmark, isLiked, likesCount, on
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <IconButton 
-                sx={{ color: isLiked ? '#FF5757' : '#f0f0f0' }} onClick={onLike}>
+              <IconButton sx={{ color: currentIsLiked ? '#FF5757' : '#f0f0f0' }} onClick={handleLikeClick}>  
                 <Favorite />
               </IconButton>
               
               <Typography variant="body2" sx={{ color: '#f0f0f0', fontFamily: "'TanPearl', sans-serif" }}>
-                {likesCount} Likes
+                {currentLikes} Likes
               </Typography>
             </Box>
 

@@ -8,7 +8,7 @@ const populateFirestore = async () => {
       params: {
         client_id: API_KEY,
         query: "aesthetic",
-        per_page: 30,
+        per_page: 24,
       },
     });
     const images = response.data.results;
