@@ -90,6 +90,7 @@ const AdminViewFeedbacksPage = () => {
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
+            
             <TableBody>
               {feedbacks.length > 0 ? (
                 feedbacks.map((feedback) => (

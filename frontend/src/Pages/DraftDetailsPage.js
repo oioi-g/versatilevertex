@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, storage } from "../firebase";
@@ -25,8 +25,12 @@ const DraftDetailsPage = () => {
   const [showPostCollageModal, setShowPostCollageModal] = useState(false);
   const [collageName, setCollageName] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSaveBeforeExit, setShowSaveBeforeExit] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   
   const collageRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDraft = async () => {
@@ -55,6 +59,57 @@ const DraftDetailsPage = () => {
     };
     fetchDraft();
   }, [draftId]);
+
+  useEffect(() => {
+    if (draft) {
+      const originalCollage = draft.collage || [];
+      const hasChanges = JSON.stringify(originalCollage) !== JSON.stringify(collageItems);
+      setHasUnsavedChanges(hasChanges);
+    }
+  }, [collageItems, draft]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+  
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  const handleNavigationAttempt = (path) => {
+    if (hasUnsavedChanges) {
+      setShowSaveBeforeExit(true);
+      setPendingNavigation(() => () => navigate(path));
+    }
+    else {
+      navigate(path);
+    }
+  };
+
+  const BackButton = () => (
+    <Button 
+      variant="contained" 
+      onClick={() => handleNavigationAttempt("/homepage")}
+    >
+      Back to Home
+    </Button>
+  );
+  
+  const handleExitWithoutSaving = () => {
+    setShowSaveBeforeExit(false);
+    if (pendingNavigation) {
+      pendingNavigation();
+    } else {
+      navigate("/homepage");
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -310,30 +365,6 @@ const DraftDetailsPage = () => {
             {draft.name}
           </Typography>
 
-          {/* <Box ref={collageRef} sx={styles.collageArea} >
-            {collageItems.map((item, index) => (
-              <Draggable key={`${index}-${item.imageUrl}`} position={{ x: item.x || 0, y: item.y || 0 }} onStop={(e, data) => handleDragStop(index, e, data)} cancel=".react-resizable-handle"
-                sx={{ 
-                  position: "absolute", 
-                  left: `${item.x || 0}px`, 
-                  top: `${item.y || 0}px`, 
-                  width: `${item.width || 100}px`, 
-                  height: `${item.height || 100}px`, 
-                  transform: `rotate(${item.rotation || 0}deg)`, 
-                  zIndex: selectedItem === index ? 1000 : 1, 
-                  overflow: "hidden" 
-                }}>
-                <div className="pinContainer">
-                  <ResizableBox width={item.width || 100} height={item.height || 100} minConstraints={[50, 50]} maxConstraints={[300, 300]} onResizeStop={(e, data) => handleResizeStop(index, e, data)} >
-                    <img src={item.imageUrl} alt={item.title} onClick={() => setSelectedItem(index)} 
-                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "5px", transform: `${item.flipped ? "scaleX(-1)" : ""}`, opacity: item.opacity || 1 }} 
-                    />
-                  </ResizableBox>
-                </div>
-              </Draggable>
-            ))}
-          </Box> */}
-
           <Box ref={collageRef} sx={styles.collageArea}>
             {collageItems.map((item, index) => (
               <Draggable 
@@ -407,6 +438,8 @@ const DraftDetailsPage = () => {
               Save Draft
             </Button>
 
+            <BackButton />
+
             <Button variant="contained" color="secondary" onClick={handlePostCollage}>
               Post Collage
             </Button>
@@ -473,6 +506,20 @@ const DraftDetailsPage = () => {
 
         <DialogActions>
           <Button onClick={handlePostCollage}>Done</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={showSaveBeforeExit} onClose={() => setShowSaveBeforeExit(false)}>
+        <DialogTitle>Unsaved Changes</DialogTitle>
+
+        <DialogContent>
+          <Typography>You have unsaved changes. Do you want to save before leaving?</Typography>
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={handleExitWithoutSaving} sx={{ backgroundColor: "#ff5757", color: "#f0f0f0"}}>Leave Without Saving</Button>
+          
+          <Button onClick={() => setShowSaveBeforeExit(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </Container>

@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { doc, getDoc, updateDoc, collection, addDoc, deleteDoc } from "firebase/firestore";
 import { auth, db, storage } from "../firebase";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import Draggable from "react-draggable";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
