@@ -162,6 +162,51 @@ const BoardDetailsPage = () => {
     saveToHistory({ collageItems: updatedCollage });
   };
 
+  // const handleSaveAsDraft = async () => {
+  //   try {
+  //     const user = auth.currentUser;
+  //     if (!user) {
+  //       setError("You need to be logged in to save the collage as a draft.");
+  //       return;
+  //     }
+  //     if (!draftName.trim()) {
+  //       setError("Please enter a name for the draft.");
+  //       return;
+  //     }
+  //     const draftData = {
+  //       name: draftName,
+  //       collage: collageItems.map((item) => ({
+  //         ...item,
+  //         opacity: item.opacity || 1,
+  //       })),
+  //       updatedAt: new Date(),
+  //     };
+  //     if (draftId) {
+  //       const draftRef = doc(db, "user", user.uid, "drafts", draftId);
+  //       await updateDoc(draftRef, draftData);
+  //     } 
+  //     else {
+  //       const draftRef = collection(db, "user", user.uid, "drafts");
+  //       const newDraftRef = await addDoc(draftRef, {
+  //         ...draftData,
+  //         createdAt: new Date(),
+  //       });
+  //       setDraftId(newDraftRef.id);
+  //       const boardRef = doc(db, "user", user.uid, "boards", boardId);
+  //       await updateDoc(boardRef, {
+  //         draftId: newDraftRef.id,
+  //       });
+  //     }
+  //     setShowConfirmation(true);
+  //     setShowDraftNameModal(false);
+  //     setDraftName("");
+  //   } 
+  //   catch (error) {
+  //     console.error(error);
+  //     setError("Failed to save the collage as a draft. Please try again later.");
+  //   }
+  // };
+
   const handleSaveAsDraft = async () => {
     try {
       const user = auth.currentUser;
@@ -173,19 +218,28 @@ const BoardDetailsPage = () => {
         setError("Please enter a name for the draft.");
         return;
       }
+      
+      // Format collage items consistently
       const draftData = {
         name: draftName,
-        collage: collageItems.map((item) => ({
+        collage: collageItems.map(item => ({
           ...item,
-          opacity: item.opacity || 1,
+          x: item.x || 0,
+          y: item.y || 0,
+          width: item.width || 100,
+          height: item.height || 100,
+          rotation: item.rotation || 0,
+          zIndex: item.zIndex || 0,
+          opacity: item.opacity !== undefined ? item.opacity : 1,
+          flipped: item.flipped || false
         })),
         updatedAt: new Date(),
       };
+  
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await updateDoc(draftRef, draftData);
-      } 
-      else {
+      } else {
         const draftRef = collection(db, "user", user.uid, "drafts");
         const newDraftRef = await addDoc(draftRef, {
           ...draftData,
@@ -197,11 +251,11 @@ const BoardDetailsPage = () => {
           draftId: newDraftRef.id,
         });
       }
+      
       setShowConfirmation(true);
       setShowDraftNameModal(false);
       setDraftName("");
-    } 
-    catch (error) {
+    } catch (error) {
       console.error(error);
       setError("Failed to save the collage as a draft. Please try again later.");
     }
@@ -247,6 +301,72 @@ const BoardDetailsPage = () => {
     }
   };
 
+  // const handlePostCollage = async () => {
+  //   try {
+  //     const user = auth.currentUser;
+  //     if (!user) {
+  //       setError("You need to be logged in to post the collage.");
+  //       return;
+  //     }
+  //     const userDocRef = doc(db, "user", user.uid);
+  //     const userDocSnap = await getDoc(userDocRef);
+  //     if (!userDocSnap.exists()) {
+  //       setError("User data not found.");
+  //       return;
+  //     }
+  //     const userData = userDocSnap.data();
+  //     const username = userData.username || "Anonymous";
+  //     const formattedCollageItems = collageItems.map((item) => ({
+  //       imageUrl: item.imageUrl,
+  //       x: item.x || 0,
+  //       y: item.y || 0,
+  //       width: item.width || 100,
+  //       height: item.height || 100,
+  //       rotation: item.rotation || 0,
+  //       zIndex: item.zIndex || 0,
+  //       opacity: item.opacity || 1,
+  //       flipped: item.flipped || false,
+  //       layout: {
+  //         x: item.x || 0,
+  //         y: item.y || 0,
+  //         width: item.width || 100,
+  //         height: item.height || 100,
+  //         rotation: item.rotation || 0,
+  //         zIndex: item.zIndex || 0,
+  //       },
+  //     }));
+  //     if (!collageName.trim()) {
+  //       setShowPostCollageModal(true);
+  //       return;
+  //     }
+  //     const publicCollageRef = collection(db, "publicCollages");
+  //     await addDoc(publicCollageRef, {
+  //       name: collageName,
+  //       collage: formattedCollageItems,
+  //       containerWidth: 1000,
+  //       containerHeight: 800,
+  //       createdAt: new Date(),
+  //       updatedAt: new Date(),
+  //       postedBy: user.uid,
+  //       postedByUsername: username,
+  //       likes: 0,
+  //       comments: [],
+  //     });
+  //     if (draftId) {
+  //       const draftRef = doc(db, "user", user.uid, "drafts", draftId);
+  //       await deleteDoc(draftRef);
+  //       setDraftId(null);
+  //     }
+  //     setSnackbarMessage("Collage posted successfully!");
+  //     setSnackbarSeverity("success");
+  //     setSnackbarOpen(true);
+  //   } 
+  //   catch (error) {
+  //     console.error(error);
+  //     setError("Failed to post the collage. Please try again later.");
+  //   }
+  // };
+
   const handlePostCollage = async () => {
     try {
       const user = auth.currentUser;
@@ -262,6 +382,8 @@ const BoardDetailsPage = () => {
       }
       const userData = userDocSnap.data();
       const username = userData.username || "Anonymous";
+      
+      // Format collage items consistently
       const formattedCollageItems = collageItems.map((item) => ({
         imageUrl: item.imageUrl,
         x: item.x || 0,
@@ -270,8 +392,9 @@ const BoardDetailsPage = () => {
         height: item.height || 100,
         rotation: item.rotation || 0,
         zIndex: item.zIndex || 0,
-        opacity: item.opacity || 1,
+        opacity: item.opacity !== undefined ? item.opacity : 1,
         flipped: item.flipped || false,
+        // Also include the layout object for compatibility
         layout: {
           x: item.x || 0,
           y: item.y || 0,
@@ -279,12 +402,14 @@ const BoardDetailsPage = () => {
           height: item.height || 100,
           rotation: item.rotation || 0,
           zIndex: item.zIndex || 0,
-        },
+        }
       }));
+  
       if (!collageName.trim()) {
         setShowPostCollageModal(true);
         return;
       }
+  
       const publicCollageRef = collection(db, "publicCollages");
       await addDoc(publicCollageRef, {
         name: collageName,
@@ -298,21 +423,23 @@ const BoardDetailsPage = () => {
         likes: 0,
         comments: [],
       });
+  
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await deleteDoc(draftRef);
         setDraftId(null);
       }
+      
       setSnackbarMessage("Collage posted successfully!");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
-    } 
-    catch (error) {
+      setShowPostCollageModal(false);
+    } catch (error) {
       console.error(error);
       setError("Failed to post the collage. Please try again later.");
     }
   };
-
+  
   const addImageToCollage = (pin) => {
     const newCollageItems = [
       ...collageItems,
