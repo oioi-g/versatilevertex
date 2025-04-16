@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TEST_EMAIL = 'oishee.g@somaiya.edu';
 const TEST_PASSWORD = '240804';
-const TEST_COLLAGE_ID = 'WS43gI7huxm6fG6ICsRI';
+const TEST_COLLAGE_ID = 'ZZcu7FLdQM1LMOUxCgjd';
 
 test.describe('Collage Details Page E2E (Authenticated)', () => {
 

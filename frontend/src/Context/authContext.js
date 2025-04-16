@@ -1,119 +1,95 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail,
   updateEmail, updatePassword, deleteUser } from "firebase/auth";
-import { auth } from "../firebase"; // Import your Firebase auth instance
+import { auth } from "../firebase";
 
-// Create the AuthContext
 const AuthContext = createContext();
 
-// Custom hook to use the AuthContext
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-// AuthProvider component to wrap your app
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null); // Current authenticated user
-  const [loading, setLoading] = useState(true); // Loading state for initial auth check
-
-  // Sign up a new user
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const signup = async (email, password) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      return userCredential.user; // Return the newly created user
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Log in an existing user
   const login = async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      return userCredential.user; // Return the logged-in user
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Log out the current user
   const logout = async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Reset the user's password
   const resetPassword = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email);
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Update the user's email
   const updateUserEmail = async (email) => {
     try {
       await updateEmail(currentUser, email);
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Update the user's password
   const updateUserPassword = async (password) => {
     try {
       await updatePassword(currentUser, password);
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+    } 
+    catch (error) {
+      throw error
     }
   };
 
-  // Delete the user's account
   const deleteUserAccount = async () => {
     try {
       await deleteUser(currentUser);
-    } catch (error) {
-      throw error; // Throw error for handling in the component
+    } 
+    catch (error) {
+      throw error;
     }
   };
 
-  // Listen for changes in the user's authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user); // Set the current user
-      setLoading(false); // Set loading to false after the initial check
+      setCurrentUser(user);
+      setLoading(false);
     });
-
-    return unsubscribe; // Cleanup the listener on unmount
+    return unsubscribe;
   }, []);
 
-  // Value to provide to the context
-  const value = {
-    currentUser,
-    signup,
-    login,
-    logout,
-    resetPassword,
-    updateUserEmail,
-    updateUserPassword,
-    deleteUserAccount,
-  };
+  const value = { currentUser, signup, login, logout, resetPassword, updateUserEmail, updateUserPassword, deleteUserAccount };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} {/* Render children only after initial auth check */}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

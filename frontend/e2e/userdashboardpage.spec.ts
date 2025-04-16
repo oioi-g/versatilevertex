@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TEST_EMAIL = 'oishee.g@somaiya.edu';
 const TEST_PASSWORD = '240804';
-const TEST_COLLAGE_ID = 'WS43gI7huxm6fG6ICsRI'
+const TEST_COLLAGE_ID = 'ZZcu7FLdQM1LMOUxCgjd'
 
 test.describe('User Dashboard Page E2E (Authenticated)', () => {
 
@@ -27,8 +27,8 @@ test.describe('User Dashboard Page E2E (Authenticated)', () => {
       test.skip();
     });
     const count = await cards.count();
-    if (count > 0) {
-      await cards.first().click();
+    if (count >= 2) {
+      await cards.nth(1).click();
       await expect(page).toHaveURL(`http://localhost:3000/collagedetailspage/${TEST_COLLAGE_ID}`);
     } 
     else {

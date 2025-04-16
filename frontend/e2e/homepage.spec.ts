@@ -15,7 +15,10 @@ test.describe('Home Page E2E', () => {
 
   test('should switch to Browse Collages tab', async ({ page }) => {
     await page.getByRole('button', { name: /Browse Collages/i }).click();
-    await expect(page.getByText(/No collages found/i).or(page.locator('img'))).toBeVisible();
+    await Promise.race([
+      expect(page.getByText(/No collages found/i)).toBeVisible(),
+      expect(page.locator('img').first()).toBeVisible()
+    ]);
   });
 
   test('should search and render image results', async ({ page }) => {

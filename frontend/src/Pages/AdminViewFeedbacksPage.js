@@ -70,7 +70,7 @@ const AdminViewFeedbacksPage = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" sx={{ mb: 3, color: '#214224', fontFamily: 'TanPearl, sans-serif' }}>
+      <Typography variant="h4" sx={{ mb: 3, color: '#214224', fontFamily: 'TanPearl, sans-serif', textAlign: "center" }}>
         User Feedbacks
       </Typography>
 

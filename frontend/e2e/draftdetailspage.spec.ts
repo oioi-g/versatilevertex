@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const TEST_EMAIL = 'oishee.g@somaiya.edu';
 const TEST_PASSWORD = '240804';
-const TEST_DRAFT_ID = 'Ohoaoe8ucBYDuHGdzvT8';
+const TEST_DRAFT_ID = '1plUGzFlWDIoE3cLYw0G';
 
 test.describe('Draft Details Page E2E (Authenticated)', () => {
 
