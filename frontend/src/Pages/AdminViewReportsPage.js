@@ -138,11 +138,11 @@ const AdminViewReportsPage = () => {
                   {report.type === 'image' ? 'Image Report' : 'Collage Report'}
                 </Typography>
 
-                <Typography sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
+                <Typography sx={{ color: "#f0f0f0" }}>
                   <strong>Reason:</strong> {report.reason.substring(0, 50)}{report.reason.length > 50 ? '...' : ''}
                 </Typography>
 
-                <Typography sx={{ fontFamily: "'TanPearl', sans-serif", color: "#f0f0f0" }}>
+                <Typography sx={{ color: "#f0f0f0" }}>
                   <strong>Date:</strong> {new Date(report.reportedAt?.seconds * 1000).toLocaleDateString()}
                 </Typography>
               </CardContent>

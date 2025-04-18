@@ -70,37 +70,11 @@ const UserProfilePage = () => {
     return userId;
   };
 
-  // const fetchFollowers = async (currentUserId) => {
-  //   try {
-  //     const usersRef = collection(db, "user");
-  //     const usersSnapshot = await getDocs(usersRef);
-  //     const followers = [];
-  //     for (const userDoc of usersSnapshot.docs) {
-  //       const relationshipsRef = collection(db, "user", userDoc.id, "relationships");
-  //       const followersQuery = query(
-  //         relationshipsRef,
-  //         where("targetUserId", "==", currentUserId),
-  //         where("type", "==", "follow")
-  //       );
-  //       const followersSnapshot = await getDocs(followersQuery);
-  //       if (!followersSnapshot.empty) {
-  //         followers.push(userDoc.id);
-  //       }
-  //     }
-  //     return followers;
-  //   } 
-  //   catch (error) {
-  //     console.error("Error fetching followers:", error);
-  //     return [];
-  //   }
-  // };
-
   const fetchFollowers = async (currentUserId) => {
     try {
       const usersRef = collection(db, "user");
       const usersSnapshot = await getDocs(usersRef);
-      const followers = [];
-  
+      const followers = [];  
       for (const userDoc of usersSnapshot.docs) {
         try {
           const relationshipsRef = collection(db, "user", userDoc.id, "relationships");
@@ -113,18 +87,20 @@ const UserProfilePage = () => {
           if (!followersSnapshot.empty) {
             followers.push(userDoc.id);
           }
-        } catch (innerError) {
+        } 
+        catch (innerError) {
           if (innerError.code === "permission-denied") {
             console.warn(`Permission denied reading relationships for user ${userDoc.id}`);
-            continue; // silently skip blocked users
-          } else {
-            throw innerError; // rethrow other unexpected errors
+            continue;
+          } 
+          else {
+            throw innerError;
           }
         }
-      }
-  
+      }  
       return followers;
-    } catch (error) {
+    } 
+    catch (error) {
       console.error("Error fetching followers:", error);
       return [];
     }

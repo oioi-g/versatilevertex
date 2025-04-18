@@ -217,8 +217,6 @@ const BoardDetailsPage = () => {
         setError("Please enter a name for the draft.");
         return;
       }
-      
-      // Format collage items consistently
       const draftData = {
         name: draftName,
         collage: collageItems.map(item => ({
@@ -233,12 +231,12 @@ const BoardDetailsPage = () => {
           flipped: item.flipped || false
         })),
         updatedAt: new Date(),
-      };
-  
+      };  
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await updateDoc(draftRef, draftData);
-      } else {
+      } 
+      else {
         const draftRef = collection(db, "user", user.uid, "drafts");
         const newDraftRef = await addDoc(draftRef, {
           ...draftData,
@@ -249,12 +247,12 @@ const BoardDetailsPage = () => {
         await updateDoc(boardRef, {
           draftId: newDraftRef.id,
         });
-      }
-      
+      }      
       setShowConfirmation(true);
       setShowDraftNameModal(false);
       setDraftName("");
-    } catch (error) {
+    } 
+    catch (error) {
       console.error(error);
       setError("Failed to save the collage as a draft. Please try again later.");
     }
@@ -300,72 +298,6 @@ const BoardDetailsPage = () => {
     }
   };
 
-  // const handlePostCollage = async () => {
-  //   try {
-  //     const user = auth.currentUser;
-  //     if (!user) {
-  //       setError("You need to be logged in to post the collage.");
-  //       return;
-  //     }
-  //     const userDocRef = doc(db, "user", user.uid);
-  //     const userDocSnap = await getDoc(userDocRef);
-  //     if (!userDocSnap.exists()) {
-  //       setError("User data not found.");
-  //       return;
-  //     }
-  //     const userData = userDocSnap.data();
-  //     const username = userData.username || "Anonymous";
-  //     const formattedCollageItems = collageItems.map((item) => ({
-  //       imageUrl: item.imageUrl,
-  //       x: item.x || 0,
-  //       y: item.y || 0,
-  //       width: item.width || 100,
-  //       height: item.height || 100,
-  //       rotation: item.rotation || 0,
-  //       zIndex: item.zIndex || 0,
-  //       opacity: item.opacity || 1,
-  //       flipped: item.flipped || false,
-  //       layout: {
-  //         x: item.x || 0,
-  //         y: item.y || 0,
-  //         width: item.width || 100,
-  //         height: item.height || 100,
-  //         rotation: item.rotation || 0,
-  //         zIndex: item.zIndex || 0,
-  //       },
-  //     }));
-  //     if (!collageName.trim()) {
-  //       setShowPostCollageModal(true);
-  //       return;
-  //     }
-  //     const publicCollageRef = collection(db, "publicCollages");
-  //     await addDoc(publicCollageRef, {
-  //       name: collageName,
-  //       collage: formattedCollageItems,
-  //       containerWidth: 1000,
-  //       containerHeight: 800,
-  //       createdAt: new Date(),
-  //       updatedAt: new Date(),
-  //       postedBy: user.uid,
-  //       postedByUsername: username,
-  //       likes: 0,
-  //       comments: [],
-  //     });
-  //     if (draftId) {
-  //       const draftRef = doc(db, "user", user.uid, "drafts", draftId);
-  //       await deleteDoc(draftRef);
-  //       setDraftId(null);
-  //     }
-  //     setSnackbarMessage("Collage posted successfully!");
-  //     setSnackbarSeverity("success");
-  //     setSnackbarOpen(true);
-  //   } 
-  //   catch (error) {
-  //     console.error(error);
-  //     setError("Failed to post the collage. Please try again later.");
-  //   }
-  // };
-
   const handlePostCollage = async () => {
     try {
       const user = auth.currentUser;
@@ -381,8 +313,6 @@ const BoardDetailsPage = () => {
       }
       const userData = userDocSnap.data();
       const username = userData.username || "Anonymous";
-      
-      // Format collage items consistently
       const formattedCollageItems = collageItems.map((item) => ({
         imageUrl: item.imageUrl,
         x: item.x || 0,
@@ -393,7 +323,6 @@ const BoardDetailsPage = () => {
         zIndex: item.zIndex || 0,
         opacity: item.opacity !== undefined ? item.opacity : 1,
         flipped: item.flipped || false,
-        // Also include the layout object for compatibility
         layout: {
           x: item.x || 0,
           y: item.y || 0,
@@ -402,13 +331,11 @@ const BoardDetailsPage = () => {
           rotation: item.rotation || 0,
           zIndex: item.zIndex || 0,
         }
-      }));
-  
+      }));  
       if (!collageName.trim()) {
         setShowPostCollageModal(true);
         return;
-      }
-  
+      }  
       const publicCollageRef = collection(db, "publicCollages");
       await addDoc(publicCollageRef, {
         name: collageName,
@@ -421,19 +348,18 @@ const BoardDetailsPage = () => {
         postedByUsername: username,
         likes: 0,
         comments: [],
-      });
-  
+      });  
       if (draftId) {
         const draftRef = doc(db, "user", user.uid, "drafts", draftId);
         await deleteDoc(draftRef);
         setDraftId(null);
-      }
-      
+      }      
       setSnackbarMessage("Collage posted successfully!");
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
       setShowPostCollageModal(false);
-    } catch (error) {
+    } 
+    catch (error) {
       console.error(error);
       setError("Failed to post the collage. Please try again later.");
     }
@@ -453,26 +379,12 @@ const BoardDetailsPage = () => {
     saveToHistory({ collageItems: newCollageItems });
   };
 
-  // const deleteImageFromMoodboard = (index) => {
-  //   const updatedPins = [...board.pins];
-  //   const deletedPin = updatedPins.splice(index, 1)[0];
-  //   const updatedCollageItems = collageItems.filter((item) => item.imageUrl !== deletedPin.imageUrl);
-  //   setBoard((prevBoard) => ({
-  //     ...prevBoard,
-  //     pins: updatedPins,
-  //   }));
-  //   setCollageItems(updatedCollageItems);
-  // };
-
   const deleteImageFromMoodboard = async (index) => {
     try {
       const user = auth.currentUser;
-      if (!user) return;
-      
-      const boardRef = doc(db, "user", user.uid, "boards", boardId);
-      
+      if (!user) return;      
+      const boardRef = doc(db, "user", user.uid, "boards", boardId);      
       if (board.pins?.[index]) {
-        // It's a pin
         const updatedPins = [...board.pins];
         const deletedPin = updatedPins.splice(index, 1)[0];
         
@@ -483,9 +395,9 @@ const BoardDetailsPage = () => {
         setBoard(prev => ({ ...prev, pins: updatedPins }));
         const updatedCollageItems = collageItems.filter(item => item.imageUrl !== deletedPin.imageUrl);
         setCollageItems(updatedCollageItems);
-      }
-      
-    } catch (error) {
+      }      
+    } 
+    catch (error) {
       console.error("Error deleting image:", error);
       setSnackbarMessage("Failed to delete image");
       setSnackbarSeverity("error");

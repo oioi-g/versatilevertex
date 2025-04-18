@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Button, Modal, IconButton, Container } from '@mui/material';
 import { Close, Delete } from '@mui/icons-material';
 
@@ -7,6 +8,17 @@ const ReportCard = ({ report, onClose, onDelete, onDeleteReportOnly }) => {
     const [isDeleteReportPressed, setIsDeleteReportPressed] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDeleteReportModal, setShowDeleteReportModal] = useState(false);
+
+    const navigate = useNavigate();
+
+    const handleContentClick = () => {
+      if (report.type === "collage" && report.contentId) {
+        navigate(`/collagedetailspage/${report.contentId}`);
+      }
+      else if (report.contentUrl) {
+        window.open(report.contentUrl, '_blank', 'noopener, noreferrer');
+      }
+    };
   
     return (
       <Container>
@@ -21,19 +33,21 @@ const ReportCard = ({ report, onClose, onDelete, onDeleteReportOnly }) => {
             </Typography>
       
             {report.contentUrl && (
-              <img src={report.contentUrl} alt="Reported content" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', marginBottom: '16px', display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
+              <Box onClick={handleContentClick} sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 }}}>
+                <img src={report.contentUrl} alt="Reported content" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', marginBottom: '16px', display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
+              </Box>
             )}
       
             <Box sx={{ marginBottom: '16px' }}>
-              <Typography variant="subtitle1" sx={{ fontFamily: "'TanPearl', sans-serif" }}>
+              <Typography variant="subtitle1">
                 <strong>Reason:</strong> {report.reason}
               </Typography>
 
-              <Typography variant="subtitle1" sx={{ fontFamily: "'TanPearl', sans-serif" }}>
+              <Typography variant="subtitle1">
                 <strong>Reported At:</strong> {new Date(report.reportedAt?.seconds * 1000).toLocaleString()}
               </Typography>
 
-              <Typography variant="subtitle1" sx={{ fontFamily: "'TanPearl', sans-serif" }}>
+              <Typography variant="subtitle1">
                 <strong>Reporter ID:</strong> {report.reporterId}
               </Typography>
             </Box>

@@ -40,23 +40,6 @@ const ViewUserPage = () => {
     }
   };
   
-  // const fetchUserBoards = async (userId) => {
-  //   try {
-  //     console.log(`Fetching boards for user ${userId}`);
-  //     const boardsRef = collection(db, "user", userId, "boards");
-  //     const querySnapshot = await getDocs(boardsRef);
-  //     const boards = [];
-  //     querySnapshot.forEach((doc) => {
-  //       boards.push({ id: doc.id, ...doc.data() });
-  //     });
-  //     console.log(`Found ${boards.length} boards`);
-  //     return boards;
-  //   } catch (error) {
-  //     console.error("Error fetching boards:", error);
-  //     throw error;
-  //   }
-  // };
-
   const fetchUserCollages = async (userId) => {
     try {
       const collagesRef = collection(db, "publicCollages");
@@ -71,7 +54,8 @@ const ViewUserPage = () => {
         });
       });
       return collagesData;
-    } catch (error) {
+    } 
+    catch (error) {
       console.error("Error fetching collages:", error);
       throw error;
     }
@@ -90,7 +74,8 @@ const ViewUserPage = () => {
         console.log("No relationship found");
         return null;
       }
-    } catch (error) {
+    } 
+    catch (error) {
       console.error("Error fetching relationship:", error);
       throw error;
     }
@@ -109,67 +94,28 @@ const ViewUserPage = () => {
         const isBlocked = blockDoc.exists() && blockDoc.data().type === "block";
         console.log("Block status:", isBlocked);
         return isBlocked;
-      } catch (error) {
+      } 
+      catch (error) {
         console.error("Error checking block status:", error);
         return false;
       }
     };
   
-    // const loadUserData = async () => {
-    //   setLoading(true);
-    //   try {
-    //     const blocked = await checkIfBlockedByUser();
-    //     setIsBlockedByUser(blocked);
-        
-    //     if (blocked) {
-    //       console.log("User is blocked by profile owner");
-    //       setLoading(false);
-    //       return;
-    //     }
-
-    //     const [userData, userBoards] = await Promise.all([
-    //       fetchUserData(userId),
-    //       fetchUserBoards(userId)
-    //     ]);
-        
-    //     setUserData(userData);
-    //     setBoards(userBoards);
-
-    //     if (currentUser) {
-    //       const relationship = await fetchRelationship(currentUser.uid, userId);
-    //       if (relationship) {
-    //         setIsFollowing(relationship.type === "follow");
-    //         setIsBlocked(relationship.type === "block");
-    //       }
-    //     }
-    //   } catch (err) {
-    //     console.error("Error in loadUserData:", err);
-    //     setError(err.message || "Failed to load profile");
-    //     setSnackbarOpen(true);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-
     const loadUserData = async () => {
       setLoading(true);
       try {
         const blocked = await checkIfBlockedByUser();
-        setIsBlockedByUser(blocked);
-        
+        setIsBlockedByUser(blocked);        
         if (blocked) {
           setLoading(false);
           return;
         }
-
         const [userData, userCollages] = await Promise.all([
           fetchUserData(userId),
           fetchUserCollages(userId)
-        ]);
-        
+        ]);        
         setUserData(userData);
         setCollages(userCollages);
-
         if (currentUser) {
           const relationship = await fetchRelationship(currentUser.uid, userId);
           if (relationship) {
@@ -177,11 +123,13 @@ const ViewUserPage = () => {
             setIsBlocked(relationship.type === "block");
           }
         }
-      } catch (err) {
+      } 
+      catch (err) {
         console.error("Error in loadUserData:", err);
         setError(err.message || "Failed to load profile");
         setSnackbarOpen(true);
-      } finally {
+      } 
+      finally {
         setLoading(false);
       }
     };
@@ -199,19 +147,22 @@ const ViewUserPage = () => {
           await unfollowUser(currentUser.uid, userId);
           setIsFollowing(false);
           setSuccess("Unfollowed user.");
-        } else {
+        } 
+        else {
           await followUser(currentUser.uid, userId);
           setIsFollowing(true);
           setSuccess("You are now following this user!");
         }
         setError("");
         setSnackbarOpen(true);
-      } catch (err) {
+      } 
+      catch (err) {
         setError("Failed to update follow status.");
         setSuccess("");
         setSnackbarOpen(true);
       }
-    } else {
+    } 
+    else {
       alert("You need to log in to follow users.");
     }
   };
@@ -220,27 +171,24 @@ const ViewUserPage = () => {
     if (!currentUser) {
       alert("You need to log in to block users.");
       return;
-    }
-  
+    }  
     try {
-      const currentUserId = currentUser.uid;
-  
+      const currentUserId = currentUser.uid;  
       if (isBlocked) {
         await unblockUser(currentUserId, userId);
         setIsBlocked(false);
         setSuccess("User unblocked.");
-      } else {
+      } 
+      else {
         const rel = await fetchRelationship(currentUserId, userId);
         if (rel?.type === "follow") {
           await unfollowUser(currentUserId, userId);
           setIsFollowing(false);
-        }
-  
+        }  
         const reverseRel = await fetchRelationship(userId, currentUserId);
         if (reverseRel?.type === "follow") {
           await unfollowUser(userId, currentUserId);
-        }
-  
+        }  
         await blockUser(currentUserId, userId);
         setIsBlocked(true);
         setIsFollowing(false);
@@ -248,7 +196,8 @@ const ViewUserPage = () => {
       }
       setError("");
       setSnackbarOpen(true);
-    } catch (err) {
+    } 
+    catch (err) {
       console.error("Error blocking/unblocking user:", err);
       setError("Failed to update block status.");
       setSuccess("");
@@ -378,9 +327,11 @@ const ViewUserPage = () => {
                     <Typography variant="body2" sx={{ color: "#f0f0f0", fontFamily: "'TanPearl', sans-serif" }}>
                       Views: {collage.views || 0}
                     </Typography>
+
                     <Typography variant="body2" sx={{ color: "#f0f0f0", fontFamily: "'TanPearl', sans-serif" }}>
                       Likes: {collage.likes || 0}
                     </Typography>
+
                     <Typography variant="body2" sx={{ color: "#f0f0f0", fontFamily: "'TanPearl', sans-serif" }}>
                       Shares: {collage.shares || 0}
                     </Typography>
@@ -394,10 +345,7 @@ const ViewUserPage = () => {
 
       {(error || success) && (
         <Snackbar open={snackbarOpen} autoHideDuration={4000} onClose={handleCloseSnackbar}>
-          <Alert 
-            onClose={handleCloseSnackbar} 
-            severity={error ? "error" : "success"} 
-            sx={{ width: "100%", backgroundColor: error ? "#ffcccc" : "#d0f0d0", color: error ? "#900" : "#214224", fontFamily: "'TanPearl', sans-serif" }}
+          <Alert onClose={handleCloseSnackbar} severity={error ? "error" : "success"} sx={{ width: "100%", backgroundColor: error ? "#ffcccc" : "#d0f0d0", color: error ? "#900" : "#214224", fontFamily: "'TanPearl', sans-serif" }}
             action={
               <IconButton size="small" onClick={handleCloseSnackbar} color="inherit">
                 <CloseIcon fontSize="small" />
